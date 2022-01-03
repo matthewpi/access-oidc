@@ -1,0 +1,832 @@
+openapi: 3.0.0
+
+info:
+  version: "1.0"
+  title: "Access OIDC"
+  license:
+    name: MIT
+
+servers:
+  - url: "http://localhost:8787"
+    description: "localhost"
+
+security:
+  - OAuth2:
+      - openid
+#  - OpenID: []
+
+paths:
+  /.well-known/openid-configuration:
+    get:
+      summary: Provider Configuration
+      operationId: openid-configuration
+      security: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Configuration"
+        default:
+          $ref: "#/components/responses/Default"
+  /protocol/openid-connect/auth:
+    get:
+      summary: Authorization Endpoint
+      operationId: openid-authorization_endpoint
+      security: []
+      # https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+      parameters:
+        - in: query
+          name: client_id
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: redirect_uri
+          schema:
+            type: string
+            format: uri
+          required: true
+        - in: query
+          name: response_type
+          schema:
+            type: string
+          required: true
+          example: "code"
+        - in: query
+          name: scope
+          schema:
+            type: string
+          required: true
+          example: "openid"
+          description: 'Requires at least "openid".'
+        - in: query
+          name: state
+          schema:
+            type: string
+            format: password
+          description: "A random string that is returned on success and can be used to verify the call and protect against cross site scripting attacks."
+        - in: query
+          name: nonce
+          schema:
+            type: string
+            format: password
+          description: "A secure random string that is used by the OpenID provider to protect against replay attacks."
+        - in: query
+          name: prompt
+          schema:
+            type: string
+          description: |
+            If used must be set to one of the following:
+
+            - **login** - The user will be prompted with a login dialog.
+            - **none** - The user will not be prompted with a login dialog.  If they do not have a current session a **login_required** error will be returned.
+        - in: query
+          name: code_challenge_method
+          schema:
+            type: string
+          description: |
+            Set this to **S256**.
+
+            Required when using PKCE.
+        - in: query
+          name: code_challenge
+          schema:
+            type: string
+          description: |
+            A Base64 Url Encoded SHA256 hash of a string that you will be required to send as **code_verifier** when making the second request in the Auth Code Flow.
+
+            Required when using PKCE.
+      # https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
+      # https://openid.net/specs/openid-connect-core-1_0.html#AuthError
+      responses:
+        302:
+          description: |
+            Redirect
+
+            If the request parameters are valid a 302 redirect will occur to the registered `redirect_uri` with the following query parameters appended.
+
+            Success - User is authenticated
+
+            The authorization code is returned with a 10 minute expiry time.
+            ```
+            ?code=M2QyYWU2OGQtNDAxNi00NzQyLTlhYzktMDRmNTY0ZTIyNTZifFPdOVT...&state=61c07cd68b0c65a0e9a35bf6c4f472f4
+            ```
+
+            Error - Invalid Response Type
+            ```
+            ?error=unsupported_response_type&error_description=the%20specified%20response_type%20is%20not%20supported
+            ```
+
+            Error - Missing the scope parameter
+            ```
+            ?error=invalid_request&error_description=missing%20required%20parameter(s)%20scope
+            ```
+
+            Error - Prompt=none and the user was not authenticated
+            ```
+            ?error=login_required&error_description=End-User%20authentication%20is%20required
+            ```
+
+            Error - invalid_scope - some of requested scopes are not whitelisted
+
+            This indicates that you have supplied scopes that are not official OIDC scopes or not defined as part of an API Authorization Server.
+            ```
+            ?error=invalid_scope&error_description=some%20of%20requested%20scopes%20are%20not%20whitelisted
+            ```
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                missing_redirect_uri:
+                  summary: "Missing `redirect_uri`"
+                  value:
+                    error: "invalid_request"
+                    error_description: "missing required parameter(s) redirect_uri"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Default"
+  /protocol/openid-connect/token:
+    post:
+      summary: Token Endpoint
+      operationId: openid-token_endpoint
+      security:
+        - TokenBasic: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - code
+                - grant_type
+                - redirect_uri
+              properties:
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                  format: password
+                code:
+                  type: string
+                  format: password
+                code_verifier:
+                  type: string
+                  format: password
+                grant_type:
+                  type: string
+                  example: "authorization_code"
+                redirect_uri:
+                  type: string
+      responses:
+        200:
+          $ref: "#/components/responses/Token"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                resource_not_found:
+                  summary: "Probably an invalid `client_id`"
+                  value:
+                    error: "invalid_request"
+                    error_description: "Resource not found"
+                grant_invalid:
+                  summary: "The grant has been used or has expired"
+                  value:
+                    error: "invalid_grant"
+                    error_description: "Grant request is invalid"
+                missing_redirect_uri:
+                  summary: "Missing `redirect_uri`"
+                  value:
+                    error: "invalid_request"
+                    error_description: "Missing required parameter(s). (redirect_uri)"
+                invalid_authorization:
+                  summary: "The authorization header is invalid"
+                  value:
+                    error: "invalid_request"
+                    error_description: "Invalid authorization header value format"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Default"
+  # https://openid.net/specs/openid-connect-core-1_0.html#UserInfoRequest
+  /protocol/openid-connect/userinfo:
+    get:
+      summary: Get User Info
+      operationId: oidc-userinfo_endpoint
+      responses:
+        # https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                no_token_provided:
+                  value:
+                    error: "invalid_request"
+                    error_description: "No bearer token provided"
+                invalid_authorization:
+                  value:
+                    error: "invalid_request"
+                    error_description: "Invalid authorization header value format"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalid_token:
+                  value:
+                    error: "invalid_token"
+                    error_description: "Invalid token provided"
+        default:
+          $ref: "#/components/responses/Default"
+    post:
+      summary: Get User Info
+      operationId: oidc-userinfo_endpoint
+      responses:
+        # https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                no_token_provided:
+                  value:
+                    error: "invalid_request"
+                    error_description: "No bearer token provided"
+                invalid_authorization:
+                  value:
+                    error: "invalid_request"
+                    error_description: "Invalid authorization header value format"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalid_token:
+                  value:
+                    error: "invalid_token"
+                    error_description: "Invalid token provided"
+        default:
+          $ref: "#/components/responses/Default"
+  /protocol/openid-connect/certs:
+    get:
+      summary: List Signing Keys
+      operationId: oidc-jwks_uri
+      security: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - keys
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JWK"
+                    uniqueItems: true
+        default:
+          $ref: "#/components/responses/Default"
+  # https://openid.net/specs/openid-connect-registration-1_0.html#RegistrationRequest
+  /client-registrations/openid-connect:
+    get:
+      summary: List Registered Clients
+      responses:
+        200:
+          description: OK
+    post:
+      summary: Dynamic Client Registration
+      operationId: oidc-registration_endpoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientMetadata"
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+  /client-registrations/openid-connect/{client_id}:
+    get:
+      summary: Get Client Information
+      parameters:
+        - in: path
+          name: client_id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientMetadata"
+    patch:
+      summary: Update Client Information
+      parameters:
+        - in: path
+          name: client_id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientMetadata"
+    delete:
+      summary: Delete Client
+      parameters:
+        - in: path
+          name: client_id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      responses:
+        204:
+          description: OK
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /protocol/openid-connect/auth
+          tokenUrl: /protocol/openid-connect/token
+          scopes:
+            openid: OpenID Connect
+#    OpenID:
+#      type: openIdConnect
+#      openIdConnectUrl: /.well-known/openid-configuration
+    TokenBasic:
+      type: http
+      scheme: basic
+
+  schemas:
+    Client:
+      allOf:
+        - type: object
+          required:
+            - client_id
+            - client_id_issued_at
+          properties:
+            client_id:
+              type: string
+            client_id_issued_at:
+              type: string
+              format: date-time
+            client_secret:
+              type: string
+              format: password
+            client_secret_expires_at:
+              type: string
+              format: date-time
+        - $ref: "#/components/schemas/ClientMetadata"
+    ClientMetadata:
+      type: object
+      required:
+        - redirect_uris
+      properties:
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+          example:
+            - https://client.example.org/callback
+          uniqueItems: true
+        response_types:
+          type: array
+          items:
+            type: string
+            enum:
+              - code
+              - id_token
+              - id_token token
+          default:
+            - code
+          uniqueItems: true
+        grant_types:
+          type: array
+          items:
+            type: string
+            enum:
+              - authorization_code
+              - implicit
+              - refresh_token
+          default:
+            - authorization_code
+            - implicit
+            - refresh_token
+          uniqueItems: true
+        application_type:
+          type: string
+          enum:
+            - native
+            - web
+          default: web
+        contacts:
+          type: array
+          items:
+            type: string
+            format: email
+          example:
+            - user@example.com
+          default: [ ]
+          uniqueItems: true
+        client_name:
+          type: string
+          example: "My Client"
+        logo_uri:
+          type: string
+          format: uri
+        client_uri:
+          type: string
+          format: uri
+        policy_uri:
+          type: string
+          format: uri
+        tos_uri:
+          type: string
+          format: uri
+        jwks_uri:
+          type: string
+          format: uri
+          description: "Mutually exclusive with `jwks`"
+        jwks:
+          type: array
+          items:
+            $ref: "#/components/schemas/JWK"
+          description: "Mutually exclusive with `jwks_uri`"
+          uniqueItems: true
+        sector_identifier_uri:
+          type: string
+          format: uri
+        subject_type:
+          type: string
+          enum:
+            - pairwise
+            - public
+          default: public
+        id_token_signed_response_alg:
+          $ref: "#/components/schemas/JWSAlgorithm"
+        id_token_encrypted_response_alg:
+          $ref: "#/components/schemas/JWEAlgorithm"
+        id_token_encrypted_response_enc:
+          $ref: "#/components/schemas/JWEEncryption"
+        userinfo_signed_response_alg:
+          $ref: "#/components/schemas/JWSAlgorithm"
+        userinfo_encrypted_response_alg:
+          $ref: "#/components/schemas/JWEAlgorithm"
+        userinfo_encrypted_response_enc:
+          $ref: "#/components/schemas/JWEEncryption"
+        request_object_signing_alg:
+          $ref: "#/components/schemas/JWSAlgorithm"
+        request_object_encryption_alg:
+          $ref: "#/components/schemas/JWEAlgorithm"
+        request_object_encryption_enc:
+          $ref: "#/components/schemas/JWEEncryption"
+        token_endpoint_auth_method:
+          type: string
+          enum:
+            - client_secret_basic
+            - client_secret_post
+            - client_secret_jwt
+            - private_key_jwt
+            - none
+          default: client_secret_basic
+        token_endpoint_auth_signing_alg:
+          $ref: "#/components/schemas/JWSAlgorithm"
+        default_max_age:
+          type: number
+          format: int32
+          default: 0
+        require_auth_time:
+          type: boolean
+          default: false
+        default_acr_values:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+        initiate_login_uri:
+          type: string
+          format: uri
+        request_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+          uniqueItems: true
+    Configuration:
+      type: object
+      required:
+        - issuer
+        - authorization_endpoint
+        - jwks_uri
+        - response_types_supported
+        - subject_types_supported
+        - id_token_signing_alg_values_supported
+      properties:
+        issuer:
+          type: string
+          example: "http://127.0.0.1:8787"
+        authorization_endpoint:
+          type: string
+          example: "http://127.0.0.1:8787/protocol/openid-connect/auth"
+        token_endpoint:
+          type: string
+          example: "http://127.0.0.1:8787/protocol/openid-connect/token"
+        userinfo_endpoint:
+          type: string
+          example: "http://127.0.0.1:8787/protocol/openid-connect/userinfo"
+        jwks_uri:
+          type: string
+          example: "http://127.0.0.1:8787/protocol/openid-connect/certs"
+        scopes_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "openid"
+          uniqueItems: true
+        response_types_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "code"
+            - "code id_token"
+            - "id_token"
+          uniqueItems: true
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "authorization_code"
+            - "refresh_token"
+          default:
+            - "authorization_code"
+            - "implicit"
+          uniqueItems: true
+        subject_types_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "pairwise"
+            - "public"
+          uniqueItems: true
+        id_token_signing_alg_values_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "RS256"
+          uniqueItems: true
+        token_endpoint_auth_methods_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "client_secret_basic"
+            - "client_secret_post"
+          uniqueItems: true
+        claims_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "aud"
+            - "exp"
+            - "iat"
+            - "iss"
+            - "sub"
+          uniqueItems: true
+    Error:
+      type: object
+      required:
+        - error
+        - error_description
+      properties:
+        error:
+          type: string
+          example: ""
+        error_description:
+          type: string
+          example: ""
+    JWK:
+      type: object
+      required:
+        - kid
+        - kty
+        # - e
+        # - n
+      properties:
+        kid:
+          type: string
+          example: "9b43e575-a435-4868-9ca5-197255dc4ce3"
+          description: "Key ID"
+        kty:
+          type: string
+          example: "RSA"
+          description: "Key Type"
+        use:
+          type: string
+          example: "sig"
+          description: "Key Use"
+        e:
+          type: string
+          example: "AQAB"
+          description: ""
+        n:
+          type: string
+          example: ""
+          description: ""
+    JWEAlgorithm:
+      type: string
+      enum:
+        - RSA1_5
+        - RSA-OAEP
+        - RSA-OAEP-256
+      example: RSA-OAEP
+    JWEEncryption:
+      type: string
+      enum:
+        - A128GCM
+        - A192GCM
+        - A256GCM
+        - A128CBC-HS256
+        - A192CBC-HS384
+        - A256CBC-HS512
+      example: A128CBC-HS256
+    JWSAlgorithm:
+      type: string
+      enum:
+        - ES256
+        - ES384
+        - ES512
+        - PS256
+        - PS384
+        - PS512
+        - RS256
+        - RS384
+        - RS512
+      example: RS256
+    User:
+      type: object
+      required:
+        - sub
+      properties:
+        sub:
+          type: string
+          example: "248289761001"
+          description: ""
+        name:
+          type: string
+          example: "Jane Doe"
+          description: "The full name of the user"
+        given_name:
+          type: string
+          example: "Jane"
+          description: "The first name of the user"
+        family_name:
+          type: string
+          example: "doe"
+          description: "The last name of the user"
+        preferred_username:
+          type: string
+          example: "j.doe"
+          description: "The username for the user.  Not always an email address."
+        email:
+          type: string
+          format: email
+          example: "janedoe@example.com"
+          description: "The email address of the user."
+        picture:
+          type: string
+          format: uri
+          example: "https://example.com/janedoe/me.jpg"
+        groups:
+          type: array
+          items:
+            type: string
+          example:
+            - "admin"
+          description: ""
+          uniqueItems: true
+    Token:
+      type: object
+      required:
+        - access_token
+        - expires_in
+        - id_token
+        - token_type
+        # - refresh_token
+      properties:
+        access_token:
+          type: string
+          format: password
+          description: |
+            A JSON Web Token (JWT) that represents the session that has just been created
+            for the user.
+
+            For example the body of the JWT contains:
+            ```json
+            {
+              "jti": "",
+              "iss": "",
+              "iat": 0,
+              "exp": 0,
+              "aud": ""
+            }
+            ```
+        expires_in:
+          type: integer
+          format: int32
+          example: 3600
+          default: 3600
+          description: "The number of seconds until the session expires. Defaults to 3600."
+        id_token:
+          type: string
+          format: password
+          description: "A JSON Web Token (JWT) containing user and scope information for this session."
+        token_type:
+          type: string
+          example: "Bearer"
+          description: 'The type of access token. Always set to "Bearer".'
+        refresh_token:
+          type: string
+          format: password
+
+  responses:
+    Default:
+      description: Unexpected Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Token:
+      description: "OK"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Token"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            authentication_failed:
+              value:
+                error: "invalid_request"
+                error_description: "Authentication Failed"
+            unauthorized_access:
+              value:
+                error: "invalid_request"
+                error_description: "Access is unauthorized"

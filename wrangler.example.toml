@@ -1,0 +1,36 @@
+name = "access-oidc"
+type = "javascript"
+workers_dev = false
+compatibility_date = "2021-12-10"
+
+account_id = "<ACCOUNT_ID>"
+
+route = "<DOMAIN>/*"
+zone_id = "<ZONE_ID>"
+
+kv_namespaces = [
+	# Place KV namespace here! It should look like { binding = "KV_OIDC", id = "<some generated id>" }
+]
+
+[vars]
+SECRET_CF_ACCOUNT_ID = "<ACCOUNT_ID>"
+SECRET_CF_ACCESS_TEAM = "<https://developers.cloudflare.com/cloudflare-one/glossary#team-name>"
+SECRET_CF_ACCESS_AUD = "<create an Access Application and copy it's AUD (Overview tab once the app has been saved)>"
+
+[build]
+command = "yarn install && yarn run build:production"
+
+[build.upload]
+dir = "dist"
+format = "modules"
+main = "index.mjs"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[durable_objects]
+bindings = [{ name = "DO_OIDC", class_name = "OpenIDConnectDurableObject" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["OpenIDConnectDurableObject"]

@@ -1,0 +1,66 @@
+{
+	"name": "@matthewpi/access-oidc",
+	"description": "OpenID Connect server running on Cloudflare Workers and authenticated by Cloudflare Access",
+	"version": "0.0.1",
+	"license": "MIT",
+	"main": "dist/index.mjs",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"postinstall": "husky install",
+		"clean": "rm -f dist/*",
+		"build": "cross-env NODE_ENV=\"development\" $npm_node_execpath build.cjs",
+		"build:production": "cross-env NODE_ENV=\"production\" $npm_node_execpath build.cjs",
+		"dev": "miniflare --debug --watch --build-command \"$npm_execpath run build\" --kv KV_OIDC"
+	},
+	"dependencies": {
+		"jose": "4.3.7",
+		"~": "link:./src"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "3.3.0",
+		"cron-schedule": "3.0.4",
+		"cross-env": "7.0.3",
+		"esbuild": "0.14.10",
+		"eslint": "8.6.0",
+		"husky": "7.0.4",
+		"lint-staged": "12.1.4",
+		"miniflare": "2.0.0-rc.4",
+		"prettier": "2.5.1",
+		"typescript": "4.5.4",
+		"xo": "0.47.0"
+	},
+	"lint-staged": {
+		"src/**/*.{d.ts,ts}": [
+			"yarn xo",
+			"yarn prettier --write"
+		],
+		"**/*.json": [
+			"yarn prettier --write"
+		],
+		"**/*.md": [
+			"yarn prettier --write"
+		]
+	},
+	"engines": {
+		"node": ">=16.7",
+		"yarn": ">=1.22.0"
+	},
+	"volta": {
+		"node": "16.13.1",
+		"yarn": "1.22.17"
+	},
+	"packageManager": "yarn@3.1.1",
+	"xo": {
+		"environments": [
+			"esnext"
+		],
+		"prettier": true,
+		"rules": {
+			"@typescript-eslint/naming-convention": 0,
+			"capitalized-comments": 0,
+			"import/extensions": 0,
+			"new-cap": 0
+		}
+	}
+}
