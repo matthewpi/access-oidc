@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-const { build } = require('esbuild');
+import { build } from 'esbuild';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
