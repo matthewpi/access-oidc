@@ -20,8 +20,7 @@
 // SOFTWARE.
 //
 
-import type { JWTPayload, JWTVerifyResult } from 'jose';
-
+import type { JWTPayload, JWTVerifyResult } from './jose';
 import { API } from './cloudflare';
 import type { AuthorizationCode, Client, TokenAuthMethod } from './oidc-provider';
 import {

@@ -19,6 +19,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "3.3.0",
+		"@yarnpkg/esbuild-plugin-pnp": "2.0.0",
 		"cron-schedule": "3.0.4",
 		"cross-env": "7.0.3",
 		"esbuild": "0.14.10",

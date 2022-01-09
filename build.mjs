@@ -1,3 +1,4 @@
+import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
 import { build } from 'esbuild';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -15,4 +16,5 @@ build({
 	outfile: 'dist/index.mjs',
 	entryPoints: ['src/index.ts'],
 	platform: 'browser',
+	plugins: [pnpPlugin()],
 }).catch(() => process.exit(1));

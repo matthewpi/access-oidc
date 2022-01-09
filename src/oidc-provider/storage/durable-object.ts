@@ -20,10 +20,10 @@
 // SOFTWARE.
 //
 
-import type { JWK, KeyLike } from 'jose';
-import { exportJWK, generateKeyPair, SignJWT } from 'jose';
-import type { JWTHeaderParameters } from 'jose/dist/types/types';
+import { SignJWT } from 'jose';
 
+import type { JWK, JWTHeaderParameters, KeyLike } from '../../jose';
+import { exportJWK, generateKeyPair } from '../../jose';
 import type { Curve } from '../../oidc-token-hash';
 import { generate } from '../../oidc-token-hash';
 import type { RouterRequest } from '../../router';
@@ -224,6 +224,7 @@ export class OpenIDConnectDurableObject {
 		// https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys
 		if (this.privateKey === undefined) {
 			const { publicKey, privateKey } = await generateKeyPair('RS256', { extractable: true });
+			// @ts-expect-error
 			const kid = crypto.randomUUID();
 
 			this.privateKey = {

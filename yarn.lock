@@ -302,6 +302,7 @@ __metadata:
   resolution: "@matthewpi/access-oidc@workspace:."
   dependencies:
     "@cloudflare/workers-types": 3.3.0
+    "@yarnpkg/esbuild-plugin-pnp": 2.0.0
     cron-schedule: 3.0.4
     cross-env: 7.0.3
     esbuild: 0.14.10
@@ -672,6 +673,17 @@ __metadata:
     "@typescript-eslint/types": 5.8.1
     eslint-visitor-keys: ^3.0.0
   checksum: 46567678718a227b34a255a3606e1a2c5190a470dc9493d4c175f57566d2c16b88780fb273ca44f22cab06d45d87b25371215e93b88ac10a475877bd64bdfece
+  languageName: node
+  linkType: hard
+
+"@yarnpkg/esbuild-plugin-pnp@npm:2.0.0":
+  version: 2.0.0
+  resolution: "@yarnpkg/esbuild-plugin-pnp@npm:2.0.0"
+  dependencies:
+    tslib: ^1.13.0
+  peerDependencies:
+    esbuild: ">=0.10.0"
+  checksum: 7b98034f4c0931aa15e9cb2c77c5c485d89df3af31f1ea8223411f8880a2fbe88377d9f71ff45c04aecbcc8b2b47e167991a0f948dc2ec1f4a6ee026fea1fe9d
   languageName: node
   linkType: hard
 
@@ -4381,7 +4393,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^1.8.1":
+"tslib@npm:^1.13.0, tslib@npm:^1.8.1":
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
   checksum: dbe628ef87f66691d5d2959b3e41b9ca0045c3ee3c7c7b906cc1e328b39f199bb1ad9e671c39025bd56122ac57dfbf7385a94843b1cc07c60a4db74795829acd

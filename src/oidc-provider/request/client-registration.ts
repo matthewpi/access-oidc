@@ -20,7 +20,7 @@
 // SOFTWARE.
 //
 
-import type { JWK } from 'jose';
+import type { JWK } from '../../jose';
 
 import type {
 	GrantType,

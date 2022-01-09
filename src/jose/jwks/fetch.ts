@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021 Matthew Penner
+// Copyright (c) 2022 Matthew Penner
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,38 @@
 // SOFTWARE.
 //
 
-import { encode } from '../../base64url';
-
-export const CHALLENGE_METHODS = ['plain', 'S256'] as const;
-export type ChallengeMethod = typeof CHALLENGE_METHODS[number];
-export const isChallengeMethod = (x: any): x is ChallengeMethod => CHALLENGE_METHODS.includes(x);
-
-export async function verifyPlainChallenge(challenge: string, verifier: string): Promise<boolean> {
-	return challenge === verifier;
-}
-
-export async function verifyS256Challenge(challenge: string, verifier: string): Promise<boolean> {
-	const encoded = new TextEncoder().encode(verifier);
-	const digest = await crypto.subtle.digest({ name: 'SHA-256' }, encoded);
-	const codeVerifier = encode(new Uint8Array(digest));
-
-	return challenge === codeVerifier;
-}
-
-export async function verifyChallenge(
-	method: ChallengeMethod,
-	challenge: string,
-	verifier: string,
-): Promise<boolean> {
-	switch (method) {
-		case 'plain':
-			return verifyPlainChallenge(challenge, verifier);
-		case 'S256':
-			return verifyS256Challenge(challenge, verifier);
-		default:
-			return false;
+const fetchJwks = async (url: URL, timeout: number) => {
+	let controller!: AbortController;
+	let id!: ReturnType<typeof setTimeout>;
+	let timedOut = false;
+	if (typeof AbortController === 'function') {
+		controller = new AbortController();
+		id = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, timeout);
 	}
-}
+
+	const response = await fetch(url.href, {
+		signal: controller ? controller.signal : undefined,
+		redirect: 'manual',
+		method: 'GET',
+	}).catch(err => {
+		if (timedOut) throw new Error();
+		throw err;
+	});
+
+	if (id !== undefined) clearTimeout(id);
+
+	if (response.status !== 200) {
+		throw new Error('Expected 200 OK from the JSON Web Key Set HTTP response');
+	}
+
+	try {
+		return await response.json();
+	} catch {
+		throw new Error('Failed to parse the JSON Web Key Set HTTP response as JSON');
+	}
+};
+
+export { fetchJwks };

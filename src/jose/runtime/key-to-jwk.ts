@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021 Matthew Penner
+// Copyright (c) 2022 Matthew Penner
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,26 @@
 // SOFTWARE.
 //
 
-import { encode } from '../../base64url';
+import { encode as encodeBase64URL } from '../../base64url';
+import type { JWK } from '../types';
+import { isCryptoKey } from './webcrypto';
 
-export const CHALLENGE_METHODS = ['plain', 'S256'] as const;
-export type ChallengeMethod = typeof CHALLENGE_METHODS[number];
-export const isChallengeMethod = (x: any): x is ChallengeMethod => CHALLENGE_METHODS.includes(x);
-
-export async function verifyPlainChallenge(challenge: string, verifier: string): Promise<boolean> {
-	return challenge === verifier;
-}
-
-export async function verifyS256Challenge(challenge: string, verifier: string): Promise<boolean> {
-	const encoded = new TextEncoder().encode(verifier);
-	const digest = await crypto.subtle.digest({ name: 'SHA-256' }, encoded);
-	const codeVerifier = encode(new Uint8Array(digest));
-
-	return challenge === codeVerifier;
-}
-
-export async function verifyChallenge(
-	method: ChallengeMethod,
-	challenge: string,
-	verifier: string,
-): Promise<boolean> {
-	switch (method) {
-		case 'plain':
-			return verifyPlainChallenge(challenge, verifier);
-		case 'S256':
-			return verifyS256Challenge(challenge, verifier);
-		default:
-			return false;
+const keyToJWK = async (key: unknown): Promise<JWK> => {
+	if (key instanceof Uint8Array) {
+		return {
+			kty: 'oct',
+			k: encodeBase64URL(key),
+		};
 	}
-}
+	if (!isCryptoKey(key)) {
+		// throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
+		throw new TypeError();
+	}
+	if (!key.extractable) {
+		throw new TypeError('non-extractable CryptoKey cannot be exported as a JWK');
+	}
+	const { ext, key_ops, alg, use, ...jwk } = await crypto.subtle.exportKey('jwk', key);
+
+	return jwk as JWK;
+};
+export default keyToJWK;

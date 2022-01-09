@@ -1,0 +1,267 @@
+//
+// Copyright (c) 2022 Matthew Penner
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
+import { importJWK } from '../key';
+import { isObject } from '../lib';
+import type {
+	FlattenedJWSInput,
+	JWSHeaderParameters,
+	GetKeyFunction,
+	KeyLike,
+	JWK,
+} from '../types';
+import { fetchJwks } from './fetch';
+
+function getKtyFromAlg(alg: unknown) {
+	switch (typeof alg === 'string' && alg.slice(0, 2)) {
+		case 'RS':
+		case 'PS':
+			return 'RSA';
+		case 'ES':
+			return 'EC';
+		case 'Ed':
+			return 'OKP';
+		default:
+			throw new Error('Unsupported "alg" value for a JSON Web Key Set');
+	}
+}
+
+interface Cache {
+	[alg: string]: KeyLike;
+}
+
+/**
+ * Options for the remote JSON Web Key Set.
+ */
+interface RemoteJWKSetOptions {
+	/**
+	 * Timeout for the HTTP request. When reached the request will be
+	 * aborted and the verification will fail. Default is 5000.
+	 */
+	timeoutDuration?: number;
+
+	/**
+	 * Duration for which no more HTTP requests will be triggered
+	 * after a previous successful fetch. Default is 30000.
+	 */
+	cooldownDuration?: number;
+
+	/**
+	 * An instance of [http.Agent](https://nodejs.org/api/http.html#http_class_http_agent)
+	 * or [https.Agent](https://nodejs.org/api/https.html#https_class_https_agent) to pass
+	 * to the [http.get](https://nodejs.org/api/http.html#http_http_get_options_callback)
+	 * or [https.get](https://nodejs.org/api/https.html#https_https_get_options_callback)
+	 * method's options. Use when behind an http(s) proxy.
+	 * This is a Node.js runtime specific option, it is ignored
+	 * when used outside of Node.js runtime.
+	 */
+	agent?: any;
+}
+
+function isJWKLike(key: unknown) {
+	return isObject<JWK>(key);
+}
+
+class RemoteJWKSet {
+	private _url: globalThis.URL;
+
+	private _timeoutDuration: number;
+
+	private _cooldownDuration: number;
+
+	private _cooldownStarted?: number;
+
+	private _jwks?: { keys: JWK[] };
+
+	private _cached: WeakMap<JWK, Cache> = new WeakMap();
+
+	private _pendingFetch?: Promise<unknown>;
+
+	// private _options: Pick<RemoteJWKSetOptions, 'agent'>;
+
+	constructor(url: unknown, options?: RemoteJWKSetOptions) {
+		if (!(url instanceof URL)) {
+			throw new TypeError('url must be an instance of URL');
+		}
+
+		this._url = new URL(url.href);
+		// this._options = { agent: options?.agent };
+		this._timeoutDuration =
+			typeof options?.timeoutDuration === 'number' ? options?.timeoutDuration : 5000;
+		this._cooldownDuration =
+			typeof options?.cooldownDuration === 'number' ? options?.cooldownDuration : 30000;
+	}
+
+	coolingDown() {
+		if (!this._cooldownStarted) {
+			return false;
+		}
+
+		return Date.now() < this._cooldownStarted + this._cooldownDuration;
+	}
+
+	async getKey(protectedHeader: JWSHeaderParameters, token: FlattenedJWSInput): Promise<KeyLike> {
+		const joseHeader = {
+			...protectedHeader,
+			...token.header,
+		};
+
+		if (!this._jwks) {
+			await this.reload();
+		}
+
+		const candidates = this._jwks!.keys.filter(jwk => {
+			// filter keys based on the mapping of signature algorithms to Key Type
+			let candidate = jwk.kty === getKtyFromAlg(joseHeader.alg);
+
+			// filter keys based on the JWK Key ID in the header
+			if (candidate && typeof joseHeader.kid === 'string') {
+				candidate = joseHeader.kid === jwk.kid;
+			}
+
+			// filter keys based on the key's declared Algorithm
+			if (candidate && typeof jwk.alg === 'string') {
+				candidate = joseHeader.alg === jwk.alg;
+			}
+
+			// filter keys based on the key's declared Public Key Use
+			if (candidate && typeof jwk.use === 'string') {
+				candidate = jwk.use === 'sig';
+			}
+
+			// filter keys based on the key's declared Key Operations
+			if (candidate && Array.isArray(jwk.key_ops)) {
+				candidate = jwk.key_ops.includes('verify');
+			}
+
+			// filter out non-applicable OKP Sub Types
+			if (candidate && joseHeader.alg === 'EdDSA') {
+				candidate = jwk.crv === 'Ed25519' || jwk.crv === 'Ed448';
+			}
+
+			// filter out non-applicable EC curves
+			if (candidate) {
+				switch (joseHeader.alg) {
+					case 'ES256':
+						candidate = jwk.crv === 'P-256';
+						break;
+					case 'ES256K':
+						candidate = jwk.crv === 'secp256k1';
+						break;
+					case 'ES384':
+						candidate = jwk.crv === 'P-384';
+						break;
+					case 'ES512':
+						candidate = jwk.crv === 'P-521';
+						break;
+					default:
+				}
+			}
+
+			return candidate;
+		});
+
+		const { 0: jwk, length } = candidates;
+
+		if (length === 0) {
+			if (!this.coolingDown()) {
+				await this.reload();
+				return this.getKey(protectedHeader, token);
+			}
+			throw new Error();
+		} else if (length !== 1) {
+			throw new Error();
+		}
+
+		const cached = this._cached.get(jwk) || this._cached.set(jwk, {}).get(jwk)!;
+		if (cached[joseHeader.alg!] === undefined) {
+			const keyObject = await importJWK({ ...jwk, ext: true }, joseHeader.alg!);
+
+			if (keyObject instanceof Uint8Array || keyObject.type !== 'public') {
+				throw new Error('JSON Web Key Set members must be public keys');
+			}
+
+			cached[joseHeader.alg!] = keyObject;
+		}
+
+		return cached[joseHeader.alg!];
+	}
+
+	async reload() {
+		if (!this._pendingFetch) {
+			this._pendingFetch = fetchJwks(this._url, this._timeoutDuration)
+				.then(json => {
+					if (
+						typeof json !== 'object' ||
+						!json ||
+						// @ts-expect-error
+						!Array.isArray(json.keys) ||
+						// @ts-expect-error
+						!json.keys.every(isJWKLike)
+					) {
+						throw new Error('JSON Web Key Set malformed');
+					}
+
+					// @ts-expect-error
+					this._jwks = { keys: json.keys };
+					this._cooldownStarted = Date.now();
+					this._pendingFetch = undefined;
+				})
+				.catch((err: Error) => {
+					this._pendingFetch = undefined;
+					throw err;
+				});
+		}
+
+		await this._pendingFetch;
+	}
+}
+
+/**
+ * Returns a function that resolves to a key object downloaded from a
+ * remote endpoint returning a JSON Web Key Set, that is, for example,
+ * an OAuth 2.0 or OIDC jwks_uri. Only a single public key must match
+ * the selection process.
+ *
+ * @param url URL to fetch the JSON Web Key Set from.
+ * @param options Options for the remote JSON Web Key Set.
+ *
+ * @example Usage
+ * ```js
+ * const JWKS = jose.createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
+ *
+ * const { payload, protectedHeader } = await jose.jwtVerify(jwt, JWKS, {
+ *   issuer: 'urn:example:issuer',
+ *   audience: 'urn:example:audience'
+ * })
+ * console.log(protectedHeader)
+ * console.log(payload)
+ * ```
+ */
+export function createRemoteJWKSet(
+	url: URL,
+	options?: RemoteJWKSetOptions,
+): GetKeyFunction<JWSHeaderParameters, FlattenedJWSInput> {
+	return RemoteJWKSet.prototype.getKey.bind(new RemoteJWKSet(url, options));
+}
+
+export type { RemoteJWKSetOptions };

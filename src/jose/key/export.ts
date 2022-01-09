@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021 Matthew Penner
+// Copyright (c) 2022 Matthew Penner
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,25 @@
 // SOFTWARE.
 //
 
-import { encode } from '../../base64url';
+import keyToJWK from '../runtime/key-to-jwk';
+import type { JWK, KeyLike } from '../types';
 
-export const CHALLENGE_METHODS = ['plain', 'S256'] as const;
-export type ChallengeMethod = typeof CHALLENGE_METHODS[number];
-export const isChallengeMethod = (x: any): x is ChallengeMethod => CHALLENGE_METHODS.includes(x);
-
-export async function verifyPlainChallenge(challenge: string, verifier: string): Promise<boolean> {
-	return challenge === verifier;
+/**
+ * Exports a runtime-specific key representation (KeyLike) to a JWK.
+ *
+ * @param key Key representation to export as JWK.
+ *
+ * @example Usage
+ * ```js
+ * const privateJwk = await jose.exportJWK(privateKey)
+ * const publicJwk = await jose.exportJWK(publicKey)
+ *
+ * console.log(privateJwk)
+ * console.log(publicJwk)
+ * ```
+ */
+async function exportJWK(key: KeyLike | Uint8Array): Promise<JWK> {
+	return keyToJWK(key);
 }
 
-export async function verifyS256Challenge(challenge: string, verifier: string): Promise<boolean> {
-	const encoded = new TextEncoder().encode(verifier);
-	const digest = await crypto.subtle.digest({ name: 'SHA-256' }, encoded);
-	const codeVerifier = encode(new Uint8Array(digest));
-
-	return challenge === codeVerifier;
-}
-
-export async function verifyChallenge(
-	method: ChallengeMethod,
-	challenge: string,
-	verifier: string,
-): Promise<boolean> {
-	switch (method) {
-		case 'plain':
-			return verifyPlainChallenge(challenge, verifier);
-		case 'S256':
-			return verifyS256Challenge(challenge, verifier);
-		default:
-			return false;
-	}
-}
+export { exportJWK };

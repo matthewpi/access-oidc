@@ -20,7 +20,7 @@
 // SOFTWARE.
 //
 
-import { base64url } from 'jose';
+import { decode } from '../../base64url';
 
 import type { GrantType } from '../discovery';
 import type { TokenError } from '../error';
@@ -101,7 +101,7 @@ export function parseTokenAuthorization(header: string): TokenAuthorization | To
 		};
 	}
 
-	const decoded = base64url.decode(header.slice('Basic '.length));
+	const decoded = decode(header.slice('Basic '.length));
 	const headerString = String.fromCodePoint(...decoded);
 	const authParts = headerString.split(':');
 	if (authParts.length !== 2) {

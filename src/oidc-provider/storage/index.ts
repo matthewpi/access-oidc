@@ -20,8 +20,7 @@
 // SOFTWARE.
 //
 
-import type { JWK, JWTPayload } from 'jose';
-
+import type { JWK, JWTPayload } from '../../jose';
 import type { Env } from '../../types';
 import type { AuthorizationCode } from '../authorization-code';
 import type { ResponseType } from '../discovery';
