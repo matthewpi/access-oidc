@@ -28,13 +28,15 @@ function encodeBase64(input: Uint8Array | string): string {
 	if (typeof unencoded === 'string') {
 		unencoded = encoder.encode(unencoded);
 	}
-	const CHUNK_SIZE = 0x8000;
-	const arr = [];
+
+	const CHUNK_SIZE = 0x80_00;
+	const array = [];
 	for (let i = 0; i < unencoded.length; i += CHUNK_SIZE) {
-		// @ts-expect-error
-		arr.push(String.fromCharCode.apply(null, unencoded.subarray(i, i + CHUNK_SIZE)));
+		// @ts-expect-error go away
+		array.push(String.fromCharCode.apply(null, unencoded.subarray(i, i + CHUNK_SIZE)));
 	}
-	return btoa(arr.join(''));
+
+	return btoa(array.join(''));
 }
 
 function encode(input: Uint8Array | string) {
@@ -42,11 +44,8 @@ function encode(input: Uint8Array | string) {
 }
 
 function decodeBase64(encoded: string): Uint8Array {
-	return new Uint8Array(
-		atob(encoded)
-			.split('')
-			.map(c => c.charCodeAt(0)),
-	);
+	// eslint-disable-next-line unicorn/prefer-code-point
+	return new Uint8Array([...atob(encoded)].map(c => c.charCodeAt(0)));
 }
 
 function decode(input: Uint8Array | string) {
@@ -54,6 +53,7 @@ function decode(input: Uint8Array | string) {
 	if (encoded instanceof Uint8Array) {
 		encoded = decoder.decode(encoded);
 	}
+
 	encoded = encoded.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
 	try {
 		return decodeBase64(encoded);

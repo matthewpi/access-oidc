@@ -30,6 +30,7 @@ function getModulusLengthOption(options?: GenerateKeyPairOptions) {
 			'Invalid or unsupported modulusLength option provided, 2048 bits or larger keys must be used',
 		);
 	}
+
 	return modulusLength;
 }
 
@@ -66,7 +67,7 @@ async function generateKeyPair(alg: string, options?: GenerateKeyPairOptions) {
 		case 'RSA-OAEP-512':
 			algorithm = {
 				name: 'RSA-OAEP',
-				hash: `SHA-${parseInt(alg.slice(-3), 10) || 1}`,
+				hash: `SHA-${Number.parseInt(alg.slice(-3), 10) || 1}`,
 				publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
 				modulusLength: getModulusLengthOption(options),
 			};
@@ -96,6 +97,7 @@ async function generateKeyPair(alg: string, options?: GenerateKeyPairOptions) {
 						'Invalid or unsupported crv option provided, supported values are Ed25519 and Ed448',
 					);
 			}
+
 			break;
 		case 'ECDH-ES':
 		case 'ECDH-ES+A128KW':

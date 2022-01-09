@@ -21,8 +21,8 @@
 //
 
 import { isObject } from '../lib';
-import epoch from '../lib/epoch';
-import secs from '../lib/secs';
+import { epoch } from '../lib/epoch';
+import { secs } from '../lib/secs';
 import { JWTPayload } from '../types';
 
 /**
@@ -38,6 +38,7 @@ class ProduceJWT {
 		if (!isObject(payload)) {
 			throw new TypeError('JWT Claims Set MUST be an object');
 		}
+
 		this._payload = payload;
 	}
 
@@ -89,11 +90,10 @@ class ProduceJWT {
 	 * it is resolved to a time span and added to the current timestamp.
 	 */
 	setNotBefore(input: number | string) {
-		if (typeof input === 'number') {
-			this._payload = { ...this._payload, nbf: input };
-		} else {
-			this._payload = { ...this._payload, nbf: epoch(new Date()) + secs(input) };
-		}
+		this._payload =
+			typeof input === 'number'
+				? { ...this._payload, nbf: input }
+				: { ...this._payload, nbf: epoch(new Date()) + secs(input) };
 		return this;
 	}
 
@@ -105,11 +105,10 @@ class ProduceJWT {
 	 * it is resolved to a time span and added to the current timestamp.
 	 */
 	setExpirationTime(input: number | string) {
-		if (typeof input === 'number') {
-			this._payload = { ...this._payload, exp: input };
-		} else {
-			this._payload = { ...this._payload, exp: epoch(new Date()) + secs(input) };
-		}
+		this._payload =
+			typeof input === 'number'
+				? { ...this._payload, exp: input }
+				: { ...this._payload, exp: epoch(new Date()) + secs(input) };
 		return this;
 	}
 
@@ -120,11 +119,10 @@ class ProduceJWT {
 	 * Default is current timestamp.
 	 */
 	setIssuedAt(input?: number) {
-		if (typeof input === 'undefined') {
-			this._payload = { ...this._payload, iat: epoch(new Date()) };
-		} else {
-			this._payload = { ...this._payload, iat: input };
-		}
+		this._payload =
+			typeof input === 'undefined'
+				? { ...this._payload, iat: epoch(new Date()) }
+				: { ...this._payload, iat: input };
 		return this;
 	}
 }

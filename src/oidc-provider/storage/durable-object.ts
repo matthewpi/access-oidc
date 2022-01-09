@@ -222,8 +222,9 @@ export class OpenIDConnectDurableObject {
 		// https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys
 		if (this.privateKey === undefined) {
 			const { publicKey, privateKey } = await generateKeyPair('RS256', { extractable: true });
-			// @ts-expect-error
-			const kid = crypto.randomUUID();
+			// @ts-expect-error DOM overrides the Worker crypto type.
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			const kid = crypto.randomUUID() as string;
 
 			this.privateKey = {
 				id: kid,

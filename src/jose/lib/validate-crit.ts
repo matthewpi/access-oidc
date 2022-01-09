@@ -23,20 +23,21 @@
 import { JOSENotSupported, JWEInvalid, JWSInvalid } from '../errors';
 
 interface CritCheckHeader {
+	[propName: string]: unknown;
+
 	b64?: boolean;
 	crit?: string[];
-	[propName: string]: unknown;
 }
 
 function validateCrit(
-	Err: typeof JWEInvalid | typeof JWSInvalid,
+	Error_: typeof JWEInvalid | typeof JWSInvalid,
 	recognizedDefault: Map<string, boolean>,
-	recognizedOption: { [propName: string]: boolean } | undefined,
+	recognizedOption: Record<string, boolean> | undefined,
 	protectedHeader: CritCheckHeader,
 	joseHeader: CritCheckHeader,
 ) {
 	if (joseHeader.crit !== undefined && protectedHeader.crit === undefined) {
-		throw new Err('"crit" (Critical) Header Parameter MUST be integrity protected');
+		throw new Error_('"crit" (Critical) Header Parameter MUST be integrity protected');
 	}
 
 	if (!protectedHeader || protectedHeader.crit === undefined) {
@@ -50,17 +51,15 @@ function validateCrit(
 			(input: string) => typeof input !== 'string' || input.length === 0,
 		)
 	) {
-		throw new Err(
+		throw new Error_(
 			'"crit" (Critical) Header Parameter MUST be an array of non-empty strings when present',
 		);
 	}
 
-	let recognized: Map<string, boolean>;
-	if (recognizedOption !== undefined) {
-		recognized = new Map([...Object.entries(recognizedOption), ...recognizedDefault.entries()]);
-	} else {
-		recognized = recognizedDefault;
-	}
+	const recognized =
+		recognizedOption === undefined
+			? recognizedDefault
+			: new Map([...Object.entries(recognizedOption), ...recognizedDefault.entries()]);
 
 	for (const parameter of protectedHeader.crit) {
 		if (!recognized.has(parameter)) {
@@ -70,9 +69,11 @@ function validateCrit(
 		}
 
 		if (joseHeader[parameter] === undefined) {
-			throw new Err(`Extension Header Parameter "${parameter}" is missing`);
+			throw new Error_(`Extension Header Parameter "${parameter}" is missing`);
 		} else if (recognized.get(parameter) && protectedHeader[parameter] === undefined) {
-			throw new Err(`Extension Header Parameter "${parameter}" MUST be integrity protected`);
+			throw new Error_(
+				`Extension Header Parameter "${parameter}" MUST be integrity protected`,
+			);
 		}
 	}
 

@@ -71,6 +71,12 @@ async function importJWK(
 		throw new TypeError('"alg" argument is required when "jwk.alg" is not present');
 	}
 
+	if (jwk.kty === 'RSA' && jwk.oth !== undefined) {
+		throw new JOSENotSupported(
+			'RSA JWK "oth" (Other Primes Info) Parameter value is not supported',
+		);
+	}
+
 	switch (jwk.kty) {
 		case 'oct':
 			if (typeof jwk.k !== 'string' || !jwk.k) {
@@ -84,13 +90,7 @@ async function importJWK(
 			}
 
 			return decodeBase64URL(jwk.k);
-		// @ts-expect-error
 		case 'RSA':
-			if (jwk.oth !== undefined) {
-				throw new JOSENotSupported(
-					'RSA JWK "oth" (Other Primes Info) Parameter value is not supported',
-				);
-			}
 		case 'EC':
 		case 'OKP':
 			return jwkToKey({ ...jwk, alg });

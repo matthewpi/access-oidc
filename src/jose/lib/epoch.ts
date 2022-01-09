@@ -20,4 +20,8 @@
 // SOFTWARE.
 //
 
-export default (date: Date) => Math.floor(date.getTime() / 1000);
+function epoch(date: Date): number {
+	return Math.floor(date.getTime() / 1000);
+}
+
+export { epoch };

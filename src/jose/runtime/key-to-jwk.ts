@@ -33,12 +33,15 @@ async function keyToJWK(key: unknown): Promise<JWK> {
 			k: encodeBase64URL(key),
 		};
 	}
+
 	if (!isCryptoKey(key)) {
 		throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
 	}
+
 	if (!key.extractable) {
 		throw new TypeError('non-extractable CryptoKey cannot be exported as a JWK');
 	}
+
 	const { ext, key_ops, alg, use, ...jwk } = await crypto.subtle.exportKey('jwk', key);
 
 	return jwk as JWK;

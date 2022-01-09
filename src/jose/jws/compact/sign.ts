@@ -40,7 +40,7 @@ import { FlattenedSign } from '../flattened/sign';
  * ```
  */
 class CompactSign {
-	private _flattened: FlattenedSign;
+	private readonly _flattened: FlattenedSign;
 
 	/**
 	 * @param payload Binary representation of the payload to sign.
@@ -72,7 +72,7 @@ class CompactSign {
 			throw new TypeError('use the flattened module for creating JWS with b64: false');
 		}
 
-		return `${jws.protected}.${jws.payload}.${jws.signature}`;
+		return `${jws.protected ?? ''}.${jws.payload}.${jws.signature}`;
 	}
 }
 

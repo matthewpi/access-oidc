@@ -121,11 +121,12 @@ async function flattenedVerify(
 	if (jws.protected) {
 		const protectedHeader = decodeBase64URL(jws.protected);
 		try {
-			parsedProt = JSON.parse(decoder.decode(protectedHeader));
+			parsedProt = JSON.parse(decoder.decode(protectedHeader)) as JWSHeaderParameters;
 		} catch {
 			throw new JWSInvalid('JWS Protected Header is invalid');
 		}
 	}
+
 	if (!isDisjoint(parsedProt, jws.header)) {
 		throw new JWSInvalid(
 			'JWS Protected and JWS Unprotected Header Parameter names must be disjoint',
@@ -145,7 +146,7 @@ async function flattenedVerify(
 		joseHeader,
 	);
 
-	let b64: boolean = true;
+	let b64 = true;
 	if (extensions.has('b64')) {
 		b64 = parsedProt.b64!;
 		if (typeof b64 !== 'boolean') {

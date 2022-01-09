@@ -35,7 +35,7 @@ class JOSEError extends Error {
 	/**
 	 * A unique error code for the particular error subclass.
 	 */
-	code: string = 'ERR_JOSE_GENERIC';
+	code = 'ERR_JOSE_GENERIC';
 
 	constructor(message?: string) {
 		super(message);

@@ -38,9 +38,16 @@ const fetchJwks = async (url: URL, timeout: number) => {
 		signal: controller ? controller.signal : undefined,
 		redirect: 'manual',
 		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
+	}).catch(error => {
+		if (timedOut) {
+			throw new JWKSTimeout();
+		}
+
+		if (error instanceof Error) {
+			throw error;
+		}
+
+		throw new Error('Internal Error');
 	});
 
 	if (id !== undefined) clearTimeout(id);

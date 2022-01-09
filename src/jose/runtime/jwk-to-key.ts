@@ -72,8 +72,10 @@ function subtleMapping(jwk: JWK): {
 						'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
 					);
 			}
+
 			break;
 		}
+
 		case 'RSA': {
 			switch (jwk.alg) {
 				case 'PS256':
@@ -94,7 +96,7 @@ function subtleMapping(jwk: JWK): {
 				case 'RSA-OAEP-512':
 					algorithm = {
 						name: 'RSA-OAEP',
-						hash: `SHA-${parseInt(jwk.alg.slice(-3), 10) || 1}`,
+						hash: `SHA-${Number.parseInt(jwk.alg.slice(-3), 10) || 1}`,
 					};
 					keyUsages = jwk.d ? ['decrypt', 'unwrapKey'] : ['encrypt', 'wrapKey'];
 					break;
@@ -103,8 +105,10 @@ function subtleMapping(jwk: JWK): {
 						'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
 					);
 			}
+
 			break;
 		}
+
 		case 'EC': {
 			switch (jwk.alg) {
 				case 'ES256':
@@ -131,14 +135,17 @@ function subtleMapping(jwk: JWK): {
 						'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
 					);
 			}
+
 			break;
 		}
+
 		case 'OKP':
 			if (jwk.alg !== 'EdDSA') {
 				throw new JOSENotSupported(
 					'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
 				);
 			}
+
 			switch (jwk.crv) {
 				case 'Ed25519':
 					algorithm = { name: 'NODE-ED25519', namedCurve: 'NODE-ED25519' };
@@ -149,6 +156,7 @@ function subtleMapping(jwk: JWK): {
 						'Invalid or unsupported JWK "crv" (Subtype of Key Pair) Parameter value',
 					);
 			}
+
 			break;
 		default:
 			throw new JOSENotSupported(
@@ -164,7 +172,7 @@ async function jwkToKey(jwk: JWK): Promise<CryptoKey> {
 	const rest: [RsaHashedImportParams | EcKeyAlgorithm | Algorithm, boolean, KeyUsage[]] = [
 		algorithm,
 		jwk.ext ?? false,
-		<KeyUsage[]>jwk.key_ops ?? keyUsages,
+		(jwk.key_ops as KeyUsage[]) ?? keyUsages,
 	];
 
 	if (algorithm.name === 'PBKDF2') {

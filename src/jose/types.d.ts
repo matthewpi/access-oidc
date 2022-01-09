@@ -23,6 +23,8 @@
 type KeyLike = { type: string };
 
 interface JWK {
+	[propName: string]: unknown;
+
 	alg?: string;
 	crv?: string;
 	d?: string;
@@ -50,10 +52,11 @@ interface JWK {
 	x5t?: string;
 	'x5t#S256'?: string;
 	x5u?: string;
-	[propName: string]: unknown;
 }
 
 interface JWTPayload {
+	[propName: string]: unknown;
+
 	iss?: string;
 	sub?: string;
 	aud?: string | string[];
@@ -61,7 +64,6 @@ interface JWTPayload {
 	nbf?: number;
 	exp?: number;
 	iat?: number;
-	[propName: string]: unknown;
 }
 
 interface JWTVerifyResult {
@@ -81,10 +83,11 @@ interface JoseHeaderParameters {
 }
 
 interface JWSHeaderParameters extends JoseHeaderParameters {
+	[propName: string]: unknown;
+
 	alg?: string;
 	b64?: boolean;
 	crit?: string[];
-	[propName: string]: unknown;
 }
 
 interface CompactJWSHeaderParameters extends JWSHeaderParameters {
@@ -102,14 +105,10 @@ interface FlattenedJWSInput {
 	signature: string;
 }
 
-interface GetKeyFunction<T, T2> {
-	(protectedHeader: T, token: T2): Promise<KeyLike | Uint8Array>;
-}
+type GetKeyFunction<T, T2> = (protectedHeader: T, token: T2) => Promise<KeyLike | Uint8Array>;
 
 interface CritOption {
-	crit?: {
-		[propName: string]: boolean;
-	};
+	crit?: Record<string, boolean>;
 }
 
 interface VerifyOptions extends CritOption {
@@ -142,11 +141,12 @@ interface FlattenedVerifyResult {
 }
 
 interface JWEHeaderParameters extends JoseHeaderParameters {
+	[propName: string]: unknown;
+
 	alg?: string;
 	enc?: string;
 	crit?: string[];
 	zip?: string;
-	[propName: string]: unknown;
 }
 
 interface SignOptions extends CritOption {}

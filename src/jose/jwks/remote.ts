@@ -51,9 +51,7 @@ function getKtyFromAlg(alg: unknown) {
 	}
 }
 
-interface Cache {
-	[alg: string]: KeyLike;
-}
+type Cache = Record<string, KeyLike>;
 
 /**
  * Options for the remote JSON Web Key Set.
@@ -88,17 +86,17 @@ function isJWKLike(key: unknown) {
 }
 
 class RemoteJWKSet {
-	private _url: globalThis.URL;
+	private readonly _url: globalThis.URL;
 
-	private _timeoutDuration: number;
+	private readonly _timeoutDuration: number;
 
-	private _cooldownDuration: number;
+	private readonly _cooldownDuration: number;
 
 	private _cooldownStarted?: number;
 
 	private _jwks?: { keys: JWK[] };
 
-	private _cached: WeakMap<JWK, Cache> = new WeakMap();
+	private readonly _cached: WeakMap<JWK, Cache> = new WeakMap();
 
 	private _pendingFetch?: Promise<unknown>;
 
@@ -114,7 +112,7 @@ class RemoteJWKSet {
 		this._timeoutDuration =
 			typeof options?.timeoutDuration === 'number' ? options?.timeoutDuration : 5000;
 		this._cooldownDuration =
-			typeof options?.cooldownDuration === 'number' ? options?.cooldownDuration : 30000;
+			typeof options?.cooldownDuration === 'number' ? options?.cooldownDuration : 30_000;
 	}
 
 	coolingDown() {
@@ -193,14 +191,15 @@ class RemoteJWKSet {
 				await this.reload();
 				return this.getKey(protectedHeader, token);
 			}
+
 			throw new JWKSNoMatchingKey();
 		} else if (length !== 1) {
 			throw new JWKSMultipleMatchingKeys();
 		}
 
-		const cached = this._cached.get(jwk) || this._cached.set(jwk, {}).get(jwk)!;
+		const cached = this._cached.get(jwk) ?? this._cached.set(jwk, {}).get(jwk)!;
 		if (cached[joseHeader.alg!] === undefined) {
-			const keyObject = await importJWK({ ...jwk, ext: true }, joseHeader.alg!);
+			const keyObject = await importJWK({ ...jwk, ext: true }, joseHeader.alg);
 
 			if (keyObject instanceof Uint8Array || keyObject.type !== 'public') {
 				throw new JWKSInvalid('JSON Web Key Set members must be public keys');
@@ -219,22 +218,22 @@ class RemoteJWKSet {
 					if (
 						typeof json !== 'object' ||
 						!json ||
-						// @ts-expect-error
+						// @ts-expect-error go away
 						!Array.isArray(json.keys) ||
-						// @ts-expect-error
-						!json.keys.every(isJWKLike)
+						// @ts-expect-error go away
+						!(json.keys as unknown[]).every(v => isJWKLike(v))
 					) {
 						throw new JWKSInvalid('JSON Web Key Set malformed');
 					}
 
-					// @ts-expect-error
-					this._jwks = { keys: json.keys };
+					// @ts-expect-error go away
+					this._jwks = { keys: json.keys as JWK[] };
 					this._cooldownStarted = Date.now();
 					this._pendingFetch = undefined;
 				})
-				.catch((err: Error) => {
+				.catch((error: Error) => {
 					this._pendingFetch = undefined;
-					throw err;
+					throw error;
 				});
 		}
 

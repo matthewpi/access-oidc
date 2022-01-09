@@ -35,6 +35,7 @@ function getSignVerifyKey(alg: string, key: unknown, usage: KeyUsage) {
 		if (!alg.startsWith('HS')) {
 			throw new TypeError(invalidKeyInput(key, ...types));
 		}
+
 		return crypto.subtle.importKey(
 			'raw',
 			key,

@@ -27,10 +27,11 @@ function concat(...buffers: Uint8Array[]): Uint8Array {
 	const size = buffers.reduce((acc, { length }) => acc + length, 0);
 	const buf = new Uint8Array(size);
 	let i = 0;
-	buffers.forEach(buffer => {
+	for (const buffer of buffers) {
 		buf.set(buffer, i);
 		i += buffer.length;
-	});
+	}
+
 	return buf;
 }
 
@@ -38,22 +39,25 @@ function isObjectLike(value: unknown) {
 	return typeof value === 'object' && value !== null;
 }
 
-function isObject<T = object>(input: unknown): input is T {
+function isObject<T = Record<string, unknown>>(input: unknown): input is T {
 	if (!isObjectLike(input) || Object.prototype.toString.call(input) !== '[object Object]') {
 		return false;
 	}
+
 	if (Object.getPrototypeOf(input) === null) {
 		return true;
 	}
+
 	let proto = input;
 	while (Object.getPrototypeOf(proto) !== null) {
 		proto = Object.getPrototypeOf(proto);
 	}
+
 	return Object.getPrototypeOf(input) === proto;
 }
 
-function isDisjoint(...headers: Array<object | undefined>) {
-	const sources = <object[]>headers.filter(Boolean);
+function isDisjoint(...headers: Array<Record<string, unknown> | undefined>) {
+	const sources = headers.filter(Boolean) as Array<Record<string, unknown>>;
 
 	if (sources.length === 0 || sources.length === 1) {
 		return true;
@@ -71,6 +75,7 @@ function isDisjoint(...headers: Array<object | undefined>) {
 			if (acc.has(parameter)) {
 				return false;
 			}
+
 			acc.add(parameter);
 		}
 	}

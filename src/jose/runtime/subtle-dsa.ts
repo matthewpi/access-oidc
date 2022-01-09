@@ -32,7 +32,8 @@ function subtleDsa(alg: string, algorithm: KeyAlgorithm | EcKeyAlgorithm) {
 		case 'PS256':
 		case 'PS384':
 		case 'PS512':
-			// @ts-expect-error
+			// @ts-expect-error go away
+			// eslint-disable-next-line no-bitwise
 			return { hash, name: 'RSA-PSS', saltLength: alg.slice(-3) >> 3 };
 		case 'RS256':
 		case 'RS384':
@@ -41,10 +42,13 @@ function subtleDsa(alg: string, algorithm: KeyAlgorithm | EcKeyAlgorithm) {
 		case 'ES256':
 		case 'ES384':
 		case 'ES512':
-			return { hash, name: 'ECDSA', namedCurve: (<EcKeyAlgorithm>algorithm).namedCurve };
-		case 'EdDSA':
-			const { namedCurve } = <EcKeyAlgorithm>algorithm;
-			return <EcKeyAlgorithm>{ name: namedCurve, namedCurve };
+			return { hash, name: 'ECDSA', namedCurve: (algorithm as EcKeyAlgorithm).namedCurve };
+		case 'EdDSA': {
+			const { namedCurve } = algorithm as EcKeyAlgorithm;
+			const ecKeyAlgorithm: EcKeyAlgorithm = { name: namedCurve, namedCurve };
+			return ecKeyAlgorithm;
+		}
+
 		default:
 			throw new JOSENotSupported(
 				`alg ${alg} is not supported either by JOSE or your javascript runtime`,

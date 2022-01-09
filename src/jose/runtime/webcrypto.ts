@@ -23,7 +23,7 @@
 function isCryptoKey(key: unknown): key is CryptoKey {
 	try {
 		return (
-			key != null &&
+			key !== null &&
 			typeof (key as CryptoKey).extractable === 'boolean' &&
 			typeof (key as CryptoKey).algorithm.name === 'string' &&
 			typeof (key as CryptoKey).type === 'string'

@@ -27,9 +27,9 @@ import type {
 	JWTClaimVerificationOptions,
 	JWTPayload,
 } from '../types';
-import epoch from './epoch';
+import { epoch } from './epoch';
+import { secs } from './secs';
 import { decoder, isObject } from './index';
-import secs from './secs';
 
 function normalizeTyp(value: string): string {
 	return value.toLowerCase().replace(/^application\//, '');
@@ -49,16 +49,16 @@ function checkAudiencePresence(audPayload: unknown, audOption: unknown[]): boole
 	return false;
 }
 
-export default (
+function jwtPayload(
 	protectedHeader: JWEHeaderParameters | JWSHeaderParameters,
 	encodedPayload: Uint8Array,
 	options: JWTClaimVerificationOptions = {},
-) => {
+): JWTPayload {
 	const { typ } = options;
 	if (
 		typ &&
-		(typeof protectedHeader!.typ !== 'string' ||
-			normalizeTyp(protectedHeader!.typ) !== normalizeTyp(typ))
+		(typeof protectedHeader.typ !== 'string' ||
+			normalizeTyp(protectedHeader.typ) !== normalizeTyp(typ))
 	) {
 		throw new JWTClaimValidationFailed(
 			'unexpected "typ" JWT header value',
@@ -67,9 +67,9 @@ export default (
 		);
 	}
 
-	let payload!: { [propName: string]: unknown };
+	let payload!: Record<string, unknown>;
 	try {
-		payload = JSON.parse(decoder.decode(encodedPayload));
+		payload = JSON.parse(decoder.decode(encodedPayload)) as Record<string, unknown>;
 	} catch {
 		//
 	}
@@ -81,7 +81,7 @@ export default (
 	const { issuer } = options;
 	if (
 		issuer &&
-		!(<unknown[]>(Array.isArray(issuer) ? issuer : [issuer])).includes(payload.iss!)
+		!((Array.isArray(issuer) ? issuer : [issuer]) as unknown[]).includes(payload.iss!)
 	) {
 		throw new JWTClaimValidationFailed('unexpected "iss" claim value', 'iss', 'check_failed');
 	}
@@ -115,12 +115,13 @@ export default (
 	}
 
 	const { currentDate } = options;
-	const now = epoch(currentDate || new Date());
+	const now = epoch(currentDate ?? new Date());
 
 	if (payload.iat !== undefined || options.maxTokenAge) {
 		if (typeof payload.iat !== 'number') {
 			throw new JWTClaimValidationFailed('"iat" claim must be a number', 'iat', 'invalid');
 		}
+
 		if (payload.exp === undefined && payload.iat > now + tolerance) {
 			throw new JWTClaimValidationFailed(
 				'"iat" claim timestamp check failed (it should be in the past)',
@@ -134,6 +135,7 @@ export default (
 		if (typeof payload.nbf !== 'number') {
 			throw new JWTClaimValidationFailed('"nbf" claim must be a number', 'nbf', 'invalid');
 		}
+
 		if (payload.nbf > now + tolerance) {
 			throw new JWTClaimValidationFailed(
 				'"nbf" claim timestamp check failed',
@@ -147,6 +149,7 @@ export default (
 		if (typeof payload.exp !== 'number') {
 			throw new JWTClaimValidationFailed('"exp" claim must be a number', 'exp', 'invalid');
 		}
+
 		if (payload.exp <= now - tolerance) {
 			throw new JWTClaimValidationFailed(
 				'"exp" claim timestamp check failed',
@@ -181,4 +184,6 @@ export default (
 	}
 
 	return payload as JWTPayload;
-};
+}
+
+export { jwtPayload };

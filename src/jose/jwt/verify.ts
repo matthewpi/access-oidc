@@ -21,7 +21,7 @@
 //
 
 import { compactVerify } from '../jws/compact/verify';
-import jwtPayload from '../lib/jwt-claims-set';
+import { jwtPayload } from '../lib/jwt-claims-set';
 import { JWTInvalid } from '../errors';
 import type {
 	FlattenedJWSInput,
@@ -90,7 +90,7 @@ async function jwtVerify(
 	key: KeyLike | Uint8Array | JWTVerifyGetKey,
 	options?: JWTVerifyOptions,
 ) {
-	const verified = await compactVerify(jwt, <Parameters<typeof compactVerify>[1]>key, options);
+	const verified = await compactVerify(jwt, key as Parameters<typeof compactVerify>[1], options);
 	if (verified.protectedHeader.crit?.includes('b64') && verified.protectedHeader.b64 === false) {
 		throw new JWTInvalid('JWTs MUST NOT use unencoded payload');
 	}
@@ -100,6 +100,7 @@ async function jwtVerify(
 	if (typeof key === 'function') {
 		return { ...result, key: verified.key };
 	}
+
 	return result;
 }
 

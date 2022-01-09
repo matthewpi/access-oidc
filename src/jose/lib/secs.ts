@@ -29,14 +29,14 @@ const year = day * 365.25;
 const REGEX =
 	/^(\d+|\d+\.\d+) ?(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)$/i;
 
-export default (str: string): number => {
-	const matched = REGEX.exec(str);
+function secs(string_: string): number {
+	const matched = REGEX.exec(string_);
 
 	if (!matched) {
 		throw new TypeError('Invalid time period format');
 	}
 
-	const value = parseFloat(matched[1]);
+	const value = Number.parseFloat(matched[1]);
 	const unit = matched[2].toLowerCase();
 
 	switch (unit) {
@@ -70,4 +70,6 @@ export default (str: string): number => {
 		default:
 			return Math.round(value * year);
 	}
-};
+}
+
+export { secs };
