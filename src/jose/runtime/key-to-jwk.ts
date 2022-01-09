@@ -21,10 +21,12 @@
 //
 
 import { encode as encodeBase64URL } from '../../base64url';
+import { invalidKeyInput } from '../lib/invalid-key-input';
 import type { JWK } from '../types';
+import { types } from './is-key-like';
 import { isCryptoKey } from './webcrypto';
 
-const keyToJWK = async (key: unknown): Promise<JWK> => {
+async function keyToJWK(key: unknown): Promise<JWK> {
 	if (key instanceof Uint8Array) {
 		return {
 			kty: 'oct',
@@ -32,8 +34,7 @@ const keyToJWK = async (key: unknown): Promise<JWK> => {
 		};
 	}
 	if (!isCryptoKey(key)) {
-		// throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
-		throw new TypeError();
+		throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
 	}
 	if (!key.extractable) {
 		throw new TypeError('non-extractable CryptoKey cannot be exported as a JWK');
@@ -41,5 +42,6 @@ const keyToJWK = async (key: unknown): Promise<JWK> => {
 	const { ext, key_ops, alg, use, ...jwk } = await crypto.subtle.exportKey('jwk', key);
 
 	return jwk as JWK;
-};
-export default keyToJWK;
+}
+
+export { keyToJWK };

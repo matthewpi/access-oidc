@@ -20,4 +20,7 @@
 // SOFTWARE.
 //
 
-export {};
+export { ProduceJWT } from './produce';
+export { SignJWT } from './sign';
+export type { JWTVerifyOptions, JWTVerifyGetKey } from './verify';
+export { jwtVerify } from './verify';

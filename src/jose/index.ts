@@ -21,5 +21,8 @@
 //
 
 export * from './jwks';
+export * from './jwt';
 export * from './key';
+
+export * from './errors';
 export * from './types';

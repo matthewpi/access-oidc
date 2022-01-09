@@ -20,6 +20,12 @@
 // SOFTWARE.
 //
 
+import {
+	JOSENotSupported,
+	JWKSInvalid,
+	JWKSMultipleMatchingKeys,
+	JWKSNoMatchingKey,
+} from '../errors';
 import { importJWK } from '../key';
 import { isObject } from '../lib';
 import type {
@@ -41,7 +47,7 @@ function getKtyFromAlg(alg: unknown) {
 		case 'Ed':
 			return 'OKP';
 		default:
-			throw new Error('Unsupported "alg" value for a JSON Web Key Set');
+			throw new JOSENotSupported('Unsupported "alg" value for a JSON Web Key Set');
 	}
 }
 
@@ -187,9 +193,9 @@ class RemoteJWKSet {
 				await this.reload();
 				return this.getKey(protectedHeader, token);
 			}
-			throw new Error();
+			throw new JWKSNoMatchingKey();
 		} else if (length !== 1) {
-			throw new Error();
+			throw new JWKSMultipleMatchingKeys();
 		}
 
 		const cached = this._cached.get(jwk) || this._cached.set(jwk, {}).get(jwk)!;
@@ -197,7 +203,7 @@ class RemoteJWKSet {
 			const keyObject = await importJWK({ ...jwk, ext: true }, joseHeader.alg!);
 
 			if (keyObject instanceof Uint8Array || keyObject.type !== 'public') {
-				throw new Error('JSON Web Key Set members must be public keys');
+				throw new JWKSInvalid('JSON Web Key Set members must be public keys');
 			}
 
 			cached[joseHeader.alg!] = keyObject;
@@ -218,7 +224,7 @@ class RemoteJWKSet {
 						// @ts-expect-error
 						!json.keys.every(isJWKLike)
 					) {
-						throw new Error('JSON Web Key Set malformed');
+						throw new JWKSInvalid('JSON Web Key Set malformed');
 					}
 
 					// @ts-expect-error

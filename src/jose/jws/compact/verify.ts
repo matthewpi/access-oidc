@@ -20,6 +20,7 @@
 // SOFTWARE.
 //
 
+import { JWSInvalid } from '../../errors';
 import type {
 	CompactJWSHeaderParameters,
 	CompactVerifyResult,
@@ -59,11 +60,28 @@ interface CompactVerifyGetKey
  * console.log(new TextDecoder().decode(payload))
  * ```
  */
+function compactVerify(
+	jws: Uint8Array | string,
+	key: KeyLike | Uint8Array,
+	options?: VerifyOptions,
+): Promise<CompactVerifyResult>;
+
+/**
+ * @param jws Compact JWS.
+ * @param getKey Function resolving a key to verify the JWS with.
+ * @param options JWS Verify options.
+ */
+function compactVerify(
+	jws: Uint8Array | string,
+	getKey: CompactVerifyGetKey,
+	options?: VerifyOptions,
+): Promise<CompactVerifyResult & ResolvedKey>;
+
 async function compactVerify(
 	jws: Uint8Array | string,
 	key: KeyLike | Uint8Array | CompactVerifyGetKey,
 	options?: VerifyOptions,
-): Promise<CompactVerifyResult & ResolvedKey> {
+) {
 	if (jws instanceof Uint8Array) {
 		jws = decoder.decode(jws);
 	}
@@ -71,12 +89,12 @@ async function compactVerify(
 	const { 0: protectedHeader, 1: payload, 2: signature, length } = jws.split('.');
 
 	if (length !== 3) {
-		throw new Error('Invalid Compact JWS');
+		throw new JWSInvalid('Invalid Compact JWS');
 	}
 
 	const verified = await flattenedVerify(
 		{ payload, protected: protectedHeader, signature },
-		<Parameters<typeof flattenedVerify>[1]>key,
+		key as Parameters<typeof flattenedVerify>[1],
 		options,
 	);
 

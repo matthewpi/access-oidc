@@ -20,40 +20,25 @@
 // SOFTWARE.
 //
 
-import { JOSEError, JWKSTimeout } from '../errors';
+import { checkKeyLength } from './check-key-length';
+import { getSignVerifyKey } from './get-sign-verify-key';
+import { subtleDsa } from './subtle-dsa';
 
-const fetchJwks = async (url: URL, timeout: number) => {
-	let controller!: AbortController;
-	let id!: ReturnType<typeof setTimeout>;
-	let timedOut = false;
-	if (typeof AbortController === 'function') {
-		controller = new AbortController();
-		id = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeout);
-	}
-
-	const response = await fetch(url.href, {
-		signal: controller ? controller.signal : undefined,
-		redirect: 'manual',
-		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
-	});
-
-	if (id !== undefined) clearTimeout(id);
-
-	if (response.status !== 200) {
-		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
-	}
+async function verify(
+	alg: string,
+	key: unknown,
+	signature: Uint8Array,
+	data: Uint8Array,
+): Promise<boolean> {
+	const cryptoKey = await getSignVerifyKey(alg, key, 'verify');
+	checkKeyLength(alg, cryptoKey);
+	const algorithm = subtleDsa(alg, cryptoKey.algorithm);
 
 	try {
-		return await response.json();
+		return await crypto.subtle.verify(algorithm, cryptoKey, signature, data);
 	} catch {
-		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
+		return false;
 	}
-};
+}
 
-export { fetchJwks };
+export { verify };

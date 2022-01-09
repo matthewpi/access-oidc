@@ -20,10 +20,8 @@
 // SOFTWARE.
 //
 
-import { jwtVerify } from 'jose';
-
 import type { JWTVerifyResult } from './jose';
-import { createRemoteJWKSet } from './jose';
+import { createRemoteJWKSet, jwtVerify } from './jose';
 import type { Env } from './types';
 
 export interface AccessIdentity {

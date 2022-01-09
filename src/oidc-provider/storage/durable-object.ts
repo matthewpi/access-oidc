@@ -20,10 +20,8 @@
 // SOFTWARE.
 //
 
-import { SignJWT } from 'jose';
-
 import type { JWK, JWTHeaderParameters, KeyLike } from '../../jose';
-import { exportJWK, generateKeyPair } from '../../jose';
+import { exportJWK, generateKeyPair, SignJWT } from '../../jose';
 import type { Curve } from '../../oidc-token-hash';
 import { generate } from '../../oidc-token-hash';
 import type { RouterRequest } from '../../router';

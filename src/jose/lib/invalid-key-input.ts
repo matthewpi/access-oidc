@@ -20,40 +20,29 @@
 // SOFTWARE.
 //
 
-import { JOSEError, JWKSTimeout } from '../errors';
+function invalidKeyInput(actual: unknown, ...types: string[]): string {
+	let msg = 'Key must be ';
 
-const fetchJwks = async (url: URL, timeout: number) => {
-	let controller!: AbortController;
-	let id!: ReturnType<typeof setTimeout>;
-	let timedOut = false;
-	if (typeof AbortController === 'function') {
-		controller = new AbortController();
-		id = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeout);
+	if (types.length > 2) {
+		const last = types.pop();
+		msg += `one of type ${types.join(', ')}, or ${last}.`;
+	} else if (types.length === 2) {
+		msg += `one of type ${types[0]} or ${types[1]}.`;
+	} else {
+		msg += `of type ${types[0]}.`;
 	}
 
-	const response = await fetch(url.href, {
-		signal: controller ? controller.signal : undefined,
-		redirect: 'manual',
-		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
-	});
-
-	if (id !== undefined) clearTimeout(id);
-
-	if (response.status !== 200) {
-		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
+	if (actual == null) {
+		msg += ` Received ${actual}`;
+	} else if (typeof actual === 'function' && actual.name) {
+		msg += ` Received function ${actual.name}`;
+	} else if (typeof actual === 'object' && actual != null) {
+		if (actual.constructor && actual.constructor.name) {
+			msg += ` Received an instance of ${actual.constructor.name}`;
+		}
 	}
 
-	try {
-		return await response.json();
-	} catch {
-		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
-	}
-};
+	return msg;
+}
 
-export { fetchJwks };
+export { invalidKeyInput };

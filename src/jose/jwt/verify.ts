@@ -21,6 +21,8 @@
 //
 
 import { compactVerify } from '../jws/compact/verify';
+import jwtPayload from '../lib/jwt-claims-set';
+import { JWTInvalid } from '../errors';
 import type {
 	FlattenedJWSInput,
 	JWTHeaderParameters,
@@ -28,7 +30,8 @@ import type {
 	VerifyOptions,
 	JWTClaimVerificationOptions,
 	JWTVerifyResult,
-	KeyLike, ResolvedKey,
+	KeyLike,
+	ResolvedKey,
 } from '../types';
 
 /**
@@ -65,14 +68,31 @@ interface JWTVerifyGetKey extends GetKeyFunction<JWTHeaderParameters, FlattenedJ
  * console.log(payload)
  * ```
  */
-export async function jwtVerify(
-	jwt: string | Uint8Array,
+async function jwtVerify(
+	jwt: Uint8Array | string,
+	key: KeyLike | Uint8Array,
+	options?: JWTVerifyOptions,
+): Promise<JWTVerifyResult>;
+
+/**
+ * @param jwt JSON Web Token value (encoded as JWS).
+ * @param getKey Function resolving a key to verify the JWT with.
+ * @param options JWT Decryption and JWT Claims Set validation options.
+ */
+async function jwtVerify(
+	jwt: Uint8Array | string,
+	getKey: JWTVerifyGetKey,
+	options?: JWTVerifyOptions,
+): Promise<JWTVerifyResult & ResolvedKey>;
+
+async function jwtVerify(
+	jwt: Uint8Array | string,
 	key: KeyLike | Uint8Array | JWTVerifyGetKey,
 	options?: JWTVerifyOptions,
-): Promise<JWTVerifyResult & ResolvedKey> {
+) {
 	const verified = await compactVerify(jwt, <Parameters<typeof compactVerify>[1]>key, options);
 	if (verified.protectedHeader.crit?.includes('b64') && verified.protectedHeader.b64 === false) {
-		throw new Error('JWTs MUST NOT use unencoded payload');
+		throw new JWTInvalid('JWTs MUST NOT use unencoded payload');
 	}
 
 	const payload = jwtPayload(verified.protectedHeader, verified.payload, options);
@@ -84,3 +104,4 @@ export async function jwtVerify(
 }
 
 export type { JWTVerifyOptions, JWTVerifyGetKey };
+export { jwtVerify };

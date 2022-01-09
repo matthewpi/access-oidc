@@ -20,40 +20,19 @@
 // SOFTWARE.
 //
 
-import { JOSEError, JWKSTimeout } from '../errors';
-
-const fetchJwks = async (url: URL, timeout: number) => {
-	let controller!: AbortController;
-	let id!: ReturnType<typeof setTimeout>;
-	let timedOut = false;
-	if (typeof AbortController === 'function') {
-		controller = new AbortController();
-		id = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeout);
+function validateAlgorithms(option: string, algorithms?: string[]): Set<string> | undefined {
+	if (
+		algorithms !== undefined &&
+		(!Array.isArray(algorithms) || algorithms.some(s => typeof s !== 'string'))
+	) {
+		throw new TypeError(`"${option}" option must be an array of strings`);
 	}
 
-	const response = await fetch(url.href, {
-		signal: controller ? controller.signal : undefined,
-		redirect: 'manual',
-		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
-	});
-
-	if (id !== undefined) clearTimeout(id);
-
-	if (response.status !== 200) {
-		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
+	if (!algorithms) {
+		return undefined;
 	}
 
-	try {
-		return await response.json();
-	} catch {
-		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
-	}
-};
+	return new Set(algorithms);
+}
 
-export { fetchJwks };
+export { validateAlgorithms };

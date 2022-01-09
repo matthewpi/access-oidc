@@ -20,40 +20,13 @@
 // SOFTWARE.
 //
 
-import { JOSEError, JWKSTimeout } from '../errors';
+import { KeyLike } from '../types';
+import { isCryptoKey } from './webcrypto';
 
-const fetchJwks = async (url: URL, timeout: number) => {
-	let controller!: AbortController;
-	let id!: ReturnType<typeof setTimeout>;
-	let timedOut = false;
-	if (typeof AbortController === 'function') {
-		controller = new AbortController();
-		id = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeout);
-	}
+const types = ['CryptoKey'];
 
-	const response = await fetch(url.href, {
-		signal: controller ? controller.signal : undefined,
-		redirect: 'manual',
-		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
-	});
+function isKeyLike(key: unknown): key is KeyLike {
+	return isCryptoKey(key);
+}
 
-	if (id !== undefined) clearTimeout(id);
-
-	if (response.status !== 200) {
-		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
-	}
-
-	try {
-		return await response.json();
-	} catch {
-		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
-	}
-};
-
-export { fetchJwks };
+export { isKeyLike, types };

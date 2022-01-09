@@ -20,7 +20,7 @@
 // SOFTWARE.
 //
 
-import keyToJWK from '../runtime/key-to-jwk';
+import { keyToJWK } from '../runtime/key-to-jwk';
 import type { JWK, KeyLike } from '../types';
 
 /**

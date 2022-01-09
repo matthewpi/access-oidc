@@ -20,12 +20,13 @@
 // SOFTWARE.
 //
 
+import { JOSENotSupported } from '../errors';
 import type { GenerateKeyPairOptions } from '../key';
 
 function getModulusLengthOption(options?: GenerateKeyPairOptions) {
 	const modulusLength = options?.modulusLength ?? 2048;
 	if (modulusLength < 2048) {
-		throw new Error(
+		throw new JOSENotSupported(
 			'Invalid or unsupported modulusLength option provided, 2048 bits or larger keys must be used',
 		);
 	}
@@ -91,7 +92,7 @@ async function generateKeyPair(alg: string, options?: GenerateKeyPairOptions) {
 					keyUsages = ['sign', 'verify'];
 					break;
 				default:
-					throw new Error(
+					throw new JOSENotSupported(
 						'Invalid or unsupported crv option provided, supported values are Ed25519 and Ed448',
 					);
 			}
@@ -104,12 +105,16 @@ async function generateKeyPair(alg: string, options?: GenerateKeyPairOptions) {
 			keyUsages = ['deriveKey', 'deriveBits'];
 			break;
 		default:
-			throw new Error('Invalid or unsupported JWK "alg" (Algorithm) Parameter value');
+			throw new JOSENotSupported(
+				'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
+			);
 	}
 
-	return <Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }>>(
-		crypto.subtle.generateKey(algorithm, options?.extractable ?? false, keyUsages)
-	);
+	return crypto.subtle.generateKey(
+		algorithm,
+		options?.extractable ?? false,
+		keyUsages,
+	) as Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }>;
 }
 
 export { generateKeyPair };

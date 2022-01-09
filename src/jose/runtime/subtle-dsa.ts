@@ -20,40 +20,36 @@
 // SOFTWARE.
 //
 
-import { JOSEError, JWKSTimeout } from '../errors';
+import { JOSENotSupported } from '../errors';
 
-const fetchJwks = async (url: URL, timeout: number) => {
-	let controller!: AbortController;
-	let id!: ReturnType<typeof setTimeout>;
-	let timedOut = false;
-	if (typeof AbortController === 'function') {
-		controller = new AbortController();
-		id = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeout);
+function subtleDsa(alg: string, algorithm: KeyAlgorithm | EcKeyAlgorithm) {
+	const hash = `SHA-${alg.slice(-3)}`;
+	switch (alg) {
+		case 'HS256':
+		case 'HS384':
+		case 'HS512':
+			return { hash, name: 'HMAC' };
+		case 'PS256':
+		case 'PS384':
+		case 'PS512':
+			// @ts-expect-error
+			return { hash, name: 'RSA-PSS', saltLength: alg.slice(-3) >> 3 };
+		case 'RS256':
+		case 'RS384':
+		case 'RS512':
+			return { hash, name: 'RSASSA-PKCS1-v1_5' };
+		case 'ES256':
+		case 'ES384':
+		case 'ES512':
+			return { hash, name: 'ECDSA', namedCurve: (<EcKeyAlgorithm>algorithm).namedCurve };
+		case 'EdDSA':
+			const { namedCurve } = <EcKeyAlgorithm>algorithm;
+			return <EcKeyAlgorithm>{ name: namedCurve, namedCurve };
+		default:
+			throw new JOSENotSupported(
+				`alg ${alg} is not supported either by JOSE or your javascript runtime`,
+			);
 	}
+}
 
-	const response = await fetch(url.href, {
-		signal: controller ? controller.signal : undefined,
-		redirect: 'manual',
-		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
-	});
-
-	if (id !== undefined) clearTimeout(id);
-
-	if (response.status !== 200) {
-		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
-	}
-
-	try {
-		return await response.json();
-	} catch {
-		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
-	}
-};
-
-export { fetchJwks };
+export { subtleDsa };

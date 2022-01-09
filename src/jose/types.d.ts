@@ -149,6 +149,13 @@ interface JWEHeaderParameters extends JoseHeaderParameters {
 	[propName: string]: unknown;
 }
 
+interface SignOptions extends CritOption {}
+
+interface FlattenedJWS extends Partial<FlattenedJWSInput> {
+	payload: string;
+	signature: string;
+}
+
 export type {
 	JWK,
 	JWTVerifyResult,
@@ -167,4 +174,6 @@ export type {
 	ResolvedKey,
 	FlattenedVerifyResult,
 	JWEHeaderParameters,
+	SignOptions,
+	FlattenedJWS,
 };

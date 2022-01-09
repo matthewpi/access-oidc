@@ -20,13 +20,16 @@
 // SOFTWARE.
 //
 
+import { JWTClaimValidationFailed, JWTInvalid } from '../errors';
 import type {
 	JWEHeaderParameters,
 	JWSHeaderParameters,
 	JWTClaimVerificationOptions,
 	JWTPayload,
 } from '../types';
+import epoch from './epoch';
 import { decoder, isObject } from './index';
+import secs from './secs';
 
 function normalizeTyp(value: string): string {
 	return value.toLowerCase().replace(/^application\//, '');
@@ -57,7 +60,11 @@ export default (
 		(typeof protectedHeader!.typ !== 'string' ||
 			normalizeTyp(protectedHeader!.typ) !== normalizeTyp(typ))
 	) {
-		throw new Error('unexpected "typ" JWT header value', 'typ', 'check_failed');
+		throw new JWTClaimValidationFailed(
+			'unexpected "typ" JWT header value',
+			'typ',
+			'check_failed',
+		);
 	}
 
 	let payload!: { [propName: string]: unknown };
@@ -68,7 +75,7 @@ export default (
 	}
 
 	if (!isObject(payload)) {
-		throw new Error('JWT Claims Set must be a top-level JSON object');
+		throw new JWTInvalid('JWT Claims Set must be a top-level JSON object');
 	}
 
 	const { issuer } = options;
@@ -76,12 +83,12 @@ export default (
 		issuer &&
 		!(<unknown[]>(Array.isArray(issuer) ? issuer : [issuer])).includes(payload.iss!)
 	) {
-		throw new Error('unexpected "iss" claim value', 'iss', 'check_failed');
+		throw new JWTClaimValidationFailed('unexpected "iss" claim value', 'iss', 'check_failed');
 	}
 
 	const { subject } = options;
 	if (subject && payload.sub !== subject) {
-		throw new Error('unexpected "sub" claim value', 'sub', 'check_failed');
+		throw new JWTClaimValidationFailed('unexpected "sub" claim value', 'sub', 'check_failed');
 	}
 
 	const { audience } = options;
@@ -89,7 +96,7 @@ export default (
 		audience &&
 		!checkAudiencePresence(payload.aud, typeof audience === 'string' ? [audience] : audience)
 	) {
-		throw new Error('unexpected "aud" claim value', 'aud', 'check_failed');
+		throw new JWTClaimValidationFailed('unexpected "aud" claim value', 'aud', 'check_failed');
 	}
 
 	let tolerance: number;
@@ -112,10 +119,10 @@ export default (
 
 	if (payload.iat !== undefined || options.maxTokenAge) {
 		if (typeof payload.iat !== 'number') {
-			throw new Error('"iat" claim must be a number', 'iat', 'invalid');
+			throw new JWTClaimValidationFailed('"iat" claim must be a number', 'iat', 'invalid');
 		}
 		if (payload.exp === undefined && payload.iat > now + tolerance) {
-			throw new Error(
+			throw new JWTClaimValidationFailed(
 				'"iat" claim timestamp check failed (it should be in the past)',
 				'iat',
 				'check_failed',
@@ -125,19 +132,27 @@ export default (
 
 	if (payload.nbf !== undefined) {
 		if (typeof payload.nbf !== 'number') {
-			throw new Error('"nbf" claim must be a number', 'nbf', 'invalid');
+			throw new JWTClaimValidationFailed('"nbf" claim must be a number', 'nbf', 'invalid');
 		}
 		if (payload.nbf > now + tolerance) {
-			throw new Error('"nbf" claim timestamp check failed', 'nbf', 'check_failed');
+			throw new JWTClaimValidationFailed(
+				'"nbf" claim timestamp check failed',
+				'nbf',
+				'check_failed',
+			);
 		}
 	}
 
 	if (payload.exp !== undefined) {
 		if (typeof payload.exp !== 'number') {
-			throw new Error('"exp" claim must be a number', 'exp', 'invalid');
+			throw new JWTClaimValidationFailed('"exp" claim must be a number', 'exp', 'invalid');
 		}
 		if (payload.exp <= now - tolerance) {
-			throw new Error('"exp" claim timestamp check failed', 'exp', 'check_failed');
+			throw new JWTClaimValidationFailed(
+				'"exp" claim timestamp check failed',
+				'exp',
+				'check_failed',
+			);
 		}
 	}
 
@@ -149,7 +164,7 @@ export default (
 				: secs(options.maxTokenAge);
 
 		if (age - tolerance > max) {
-			throw new Error(
+			throw new JWTClaimValidationFailed(
 				'"iat" claim timestamp check failed (too far in the past)',
 				'iat',
 				'check_failed',
@@ -157,7 +172,7 @@ export default (
 		}
 
 		if (age < 0 - tolerance) {
-			throw new Error(
+			throw new JWTClaimValidationFailed(
 				'"iat" claim timestamp check failed (it should be in the past)',
 				'iat',
 				'check_failed',

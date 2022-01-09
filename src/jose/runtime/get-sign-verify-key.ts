@@ -20,40 +20,31 @@
 // SOFTWARE.
 //
 
-import { JOSEError, JWKSTimeout } from '../errors';
+import { checkSigCryptoKey } from '../lib/crypto-key';
+import { invalidKeyInput } from '../lib/invalid-key-input';
+import { types } from './is-key-like';
+import { isCryptoKey } from './webcrypto';
 
-const fetchJwks = async (url: URL, timeout: number) => {
-	let controller!: AbortController;
-	let id!: ReturnType<typeof setTimeout>;
-	let timedOut = false;
-	if (typeof AbortController === 'function') {
-		controller = new AbortController();
-		id = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeout);
+function getSignVerifyKey(alg: string, key: unknown, usage: KeyUsage) {
+	if (isCryptoKey(key)) {
+		checkSigCryptoKey(key, alg, usage);
+		return key;
 	}
 
-	const response = await fetch(url.href, {
-		signal: controller ? controller.signal : undefined,
-		redirect: 'manual',
-		method: 'GET',
-	}).catch(err => {
-		if (timedOut) throw new JWKSTimeout();
-		throw err;
-	});
-
-	if (id !== undefined) clearTimeout(id);
-
-	if (response.status !== 200) {
-		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
+	if (key instanceof Uint8Array) {
+		if (!alg.startsWith('HS')) {
+			throw new TypeError(invalidKeyInput(key, ...types));
+		}
+		return crypto.subtle.importKey(
+			'raw',
+			key,
+			{ hash: `SHA-${alg.slice(-3)}`, name: 'HMAC' },
+			false,
+			[usage],
+		);
 	}
 
-	try {
-		return await response.json();
-	} catch {
-		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
-	}
-};
+	throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
+}
 
-export { fetchJwks };
+export { getSignVerifyKey };

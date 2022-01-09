@@ -21,6 +21,7 @@
 //
 
 import { decode as decodeBase64URL } from '../../base64url';
+import { JOSENotSupported } from '../errors';
 import type { JWK } from '../types';
 
 function subtleMapping(jwk: JWK): {
@@ -42,7 +43,9 @@ function subtleMapping(jwk: JWK): {
 				case 'A128CBC-HS256':
 				case 'A192CBC-HS384':
 				case 'A256CBC-HS512':
-					throw new Error(`${jwk.alg} keys cannot be imported as CryptoKey instances`);
+					throw new JOSENotSupported(
+						`${jwk.alg} keys cannot be imported as CryptoKey instances`,
+					);
 				case 'A128GCM':
 				case 'A192GCM':
 				case 'A256GCM':
@@ -65,7 +68,9 @@ function subtleMapping(jwk: JWK): {
 					keyUsages = ['deriveBits'];
 					break;
 				default:
-					throw new Error('Invalid or unsupported JWK "alg" (Algorithm) Parameter value');
+					throw new JOSENotSupported(
+						'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
+					);
 			}
 			break;
 		}
@@ -94,7 +99,9 @@ function subtleMapping(jwk: JWK): {
 					keyUsages = jwk.d ? ['decrypt', 'unwrapKey'] : ['encrypt', 'wrapKey'];
 					break;
 				default:
-					throw new Error('Invalid or unsupported JWK "alg" (Algorithm) Parameter value');
+					throw new JOSENotSupported(
+						'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
+					);
 			}
 			break;
 		}
@@ -120,13 +127,17 @@ function subtleMapping(jwk: JWK): {
 					keyUsages = jwk.d ? ['deriveBits'] : [];
 					break;
 				default:
-					throw new Error('Invalid or unsupported JWK "alg" (Algorithm) Parameter value');
+					throw new JOSENotSupported(
+						'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
+					);
 			}
 			break;
 		}
 		case 'OKP':
 			if (jwk.alg !== 'EdDSA') {
-				throw new Error('Invalid or unsupported JWK "alg" (Algorithm) Parameter value');
+				throw new JOSENotSupported(
+					'Invalid or unsupported JWK "alg" (Algorithm) Parameter value',
+				);
 			}
 			switch (jwk.crv) {
 				case 'Ed25519':
@@ -134,19 +145,21 @@ function subtleMapping(jwk: JWK): {
 					keyUsages = jwk.d ? ['sign'] : ['verify'];
 					break;
 				default:
-					throw new Error(
+					throw new JOSENotSupported(
 						'Invalid or unsupported JWK "crv" (Subtype of Key Pair) Parameter value',
 					);
 			}
 			break;
 		default:
-			throw new Error('Invalid or unsupported JWK "kty" (Key Type) Parameter value');
+			throw new JOSENotSupported(
+				'Invalid or unsupported JWK "kty" (Key Type) Parameter value',
+			);
 	}
 
 	return { algorithm, keyUsages };
 }
 
-const parse = async (jwk: JWK): Promise<CryptoKey> => {
+async function jwkToKey(jwk: JWK): Promise<CryptoKey> {
 	const { algorithm, keyUsages } = subtleMapping(jwk);
 	const rest: [RsaHashedImportParams | EcKeyAlgorithm | Algorithm, boolean, KeyUsage[]] = [
 		algorithm,
@@ -161,5 +174,6 @@ const parse = async (jwk: JWK): Promise<CryptoKey> => {
 	const keyData: JWK = { ...jwk };
 	delete keyData.alg;
 	return crypto.subtle.importKey('jwk', keyData, ...rest);
-};
-export default parse;
+}
+
+export { jwkToKey };

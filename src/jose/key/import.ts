@@ -21,8 +21,9 @@
 //
 
 import { decode as decodeBase64URL } from '../../base64url';
+import { JOSENotSupported } from '../errors';
 import { isObject } from '../lib';
-import asKeyObject from '../runtime/jwk-to-key';
+import { jwkToKey } from '../runtime/jwk-to-key';
 import type { JWK, KeyLike } from '../types';
 
 /**
@@ -79,22 +80,22 @@ async function importJWK(
 			octAsKeyObject ??= jwk.ext !== true;
 
 			if (octAsKeyObject) {
-				return asKeyObject({ ...jwk, alg, ext: false });
+				return jwkToKey({ ...jwk, alg, ext: false });
 			}
 
 			return decodeBase64URL(jwk.k);
 		// @ts-expect-error
 		case 'RSA':
 			if (jwk.oth !== undefined) {
-				throw new Error(
+				throw new JOSENotSupported(
 					'RSA JWK "oth" (Other Primes Info) Parameter value is not supported',
 				);
 			}
 		case 'EC':
 		case 'OKP':
-			return asKeyObject({ ...jwk, alg });
+			return jwkToKey({ ...jwk, alg });
 		default:
-			throw new Error('Unsupported "kty" (Key Type) Parameter value');
+			throw new JOSENotSupported('Unsupported "kty" (Key Type) Parameter value');
 	}
 }
 
