@@ -14,14 +14,14 @@
 		"dev": "miniflare --debug --watch --build-command \"$npm_execpath run build\" --kv KV_OIDC"
 	},
 	"dependencies": {
-		"jose": "4.3.7",
+		"jose": "4.3.8",
 		"~": "link:./src"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "3.3.0",
 		"cron-schedule": "3.0.4",
 		"cross-env": "7.0.3",
-		"esbuild": "0.14.10",
+		"esbuild": "0.14.11",
 		"eslint": "8.6.0",
 		"husky": "7.0.4",
 		"lint-staged": "12.1.7",
