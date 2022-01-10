@@ -14,7 +14,6 @@
 		"dev": "miniflare --debug --watch --build-command \"$npm_execpath run build\" --kv KV_OIDC"
 	},
 	"dependencies": {
-		"jose": "4.3.7",
 		"~": "link:./src"
 	},
 	"devDependencies": {
