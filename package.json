@@ -22,7 +22,7 @@
 		"cron-schedule": "3.0.4",
 		"cross-env": "7.0.3",
 		"esbuild": "0.14.11",
-		"eslint": "8.6.0",
+		"eslint": "8.7.0",
 		"husky": "7.0.4",
 		"lint-staged": "12.1.7",
 		"miniflare": "2.1.0",
