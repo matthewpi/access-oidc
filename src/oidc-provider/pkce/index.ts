@@ -20,7 +20,7 @@
 // SOFTWARE.
 //
 
-import { base64url } from 'jose';
+import { encode } from '../../base64url';
 
 export const CHALLENGE_METHODS = ['plain', 'S256'] as const;
 export type ChallengeMethod = typeof CHALLENGE_METHODS[number];
@@ -33,7 +33,7 @@ export async function verifyPlainChallenge(challenge: string, verifier: string):
 export async function verifyS256Challenge(challenge: string, verifier: string): Promise<boolean> {
 	const encoded = new TextEncoder().encode(verifier);
 	const digest = await crypto.subtle.digest({ name: 'SHA-256' }, encoded);
-	const codeVerifier = base64url.encode(new Uint8Array(digest));
+	const codeVerifier = encode(new Uint8Array(digest));
 
 	return challenge === codeVerifier;
 }

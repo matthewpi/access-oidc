@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,13 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { KeyLike } from '../types';
+import { isCryptoKey } from './webcrypto';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const types = ['CryptoKey'];
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+function isKeyLike(key: unknown): key is KeyLike {
+	return isCryptoKey(key);
+}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+export { isKeyLike, types };

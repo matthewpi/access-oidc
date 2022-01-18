@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,27 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+function invalidKeyInput(actual: unknown, ...types: string[]): string {
+	let message = 'Key must be ';
 
-const isProduction = process.env.NODE_ENV === 'production';
+	if (types.length > 2) {
+		const last = types.pop() ?? "''";
+		message += `one of type ${types.join(', ')}, or ${last}.`;
+	} else if (types.length === 2) {
+		message += `one of type ${types[0]} or ${types[1]}.`;
+	} else {
+		message += `of type ${types[0]}.`;
+	}
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+	if (actual === null) {
+		message += ' Received null';
+	} else if (typeof actual === 'function' && actual.name) {
+		message += ` Received function ${actual.name}`;
+	} else if (typeof actual === 'object' && actual.constructor && actual.constructor.name) {
+		message += ` Received an instance of ${actual.constructor.name}`;
+	}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+	return message;
+}
+
+export { invalidKeyInput };

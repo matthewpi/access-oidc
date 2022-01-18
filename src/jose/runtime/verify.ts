@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,25 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { checkKeyLength } from './check-key-length';
+import { getSignVerifyKey } from './get-sign-verify-key';
+import { subtleDsa } from './subtle-dsa';
 
-const isProduction = process.env.NODE_ENV === 'production';
+async function verify(
+	alg: string,
+	key: unknown,
+	signature: Uint8Array,
+	data: Uint8Array,
+): Promise<boolean> {
+	const cryptoKey = await getSignVerifyKey(alg, key, 'verify');
+	checkKeyLength(alg, cryptoKey);
+	const algorithm = subtleDsa(alg, cryptoKey.algorithm);
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+	try {
+		return await crypto.subtle.verify(algorithm, cryptoKey, signature, data);
+	} catch {
+		return false;
+	}
+}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+export { verify };

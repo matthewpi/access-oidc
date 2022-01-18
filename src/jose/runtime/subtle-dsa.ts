@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,40 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { JOSENotSupported } from '../errors';
 
-const isProduction = process.env.NODE_ENV === 'production';
+function subtleDsa(alg: string, algorithm: KeyAlgorithm | EcKeyAlgorithm) {
+	const hash = `SHA-${alg.slice(-3)}`;
+	switch (alg) {
+		case 'HS256':
+		case 'HS384':
+		case 'HS512':
+			return { hash, name: 'HMAC' };
+		case 'PS256':
+		case 'PS384':
+		case 'PS512':
+			// @ts-expect-error go away
+			// eslint-disable-next-line no-bitwise
+			return { hash, name: 'RSA-PSS', saltLength: alg.slice(-3) >> 3 };
+		case 'RS256':
+		case 'RS384':
+		case 'RS512':
+			return { hash, name: 'RSASSA-PKCS1-v1_5' };
+		case 'ES256':
+		case 'ES384':
+		case 'ES512':
+			return { hash, name: 'ECDSA', namedCurve: (algorithm as EcKeyAlgorithm).namedCurve };
+		case 'EdDSA': {
+			const { namedCurve } = algorithm as EcKeyAlgorithm;
+			const ecKeyAlgorithm: EcKeyAlgorithm = { name: namedCurve, namedCurve };
+			return ecKeyAlgorithm;
+		}
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+		default:
+			throw new JOSENotSupported(
+				`alg ${alg} is not supported either by JOSE or your javascript runtime`,
+			);
+	}
+}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+export { subtleDsa };

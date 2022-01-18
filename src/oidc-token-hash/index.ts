@@ -20,7 +20,7 @@
 // SOFTWARE.
 //
 
-import { base64url } from 'jose';
+import { encode } from '../base64url';
 
 import type { SigningAlgorithm } from '../oidc-provider';
 
@@ -70,8 +70,8 @@ async function generate(token: string, alg: SigningAlgorithm, crv?: Curve): Prom
 		text,
 	);
 	const array = new Uint8Array(digest);
-	return base64url.encode(array.slice(0, array.length / 2));
+	return encode(array.slice(0, array.length / 2));
 }
 
-export { generate };
 export type { Curve };
+export { generate };

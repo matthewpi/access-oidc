@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,47 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { JOSEError, JWKSTimeout } from '../errors';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const fetchJwks = async (url: URL, timeout: number) => {
+	let controller!: AbortController;
+	let id!: ReturnType<typeof setTimeout>;
+	let timedOut = false;
+	if (typeof AbortController === 'function') {
+		controller = new AbortController();
+		id = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, timeout);
+	}
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+	const response = await fetch(url.href, {
+		signal: controller ? controller.signal : undefined,
+		redirect: 'manual',
+		method: 'GET',
+	}).catch(error => {
+		if (timedOut) {
+			throw new JWKSTimeout();
+		}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+		if (error instanceof Error) {
+			throw error;
+		}
+
+		throw new Error('Internal Error');
+	});
+
+	if (id !== undefined) clearTimeout(id);
+
+	if (response.status !== 200) {
+		throw new JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response');
+	}
+
+	try {
+		return await response.json();
+	} catch {
+		throw new JOSEError('Failed to parse the JSON Web Key Set HTTP response as JSON');
+	}
+};
+
+export { fetchJwks };

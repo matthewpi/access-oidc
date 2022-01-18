@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,25 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { keyToJWK } from '../runtime/key-to-jwk';
+import type { JWK, KeyLike } from '../types';
 
-const isProduction = process.env.NODE_ENV === 'production';
+/**
+ * Exports a runtime-specific key representation (KeyLike) to a JWK.
+ *
+ * @param key Key representation to export as JWK.
+ *
+ * @example Usage
+ * ```js
+ * const privateJwk = await jose.exportJWK(privateKey)
+ * const publicJwk = await jose.exportJWK(publicKey)
+ *
+ * console.log(privateJwk)
+ * console.log(publicJwk)
+ * ```
+ */
+async function exportJWK(key: KeyLike | Uint8Array): Promise<JWK> {
+	return keyToJWK(key);
+}
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
-
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+export { exportJWK };

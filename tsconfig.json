@@ -24,7 +24,7 @@
 		"useDefineForClassFields": false,
 
 		"target": "ESNext",
-		"lib": ["ESNext"],
+		"lib": ["ESNext", "DOM"],
 		"types": ["@cloudflare/workers-types"]
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts"]

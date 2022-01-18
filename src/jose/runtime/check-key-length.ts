@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,13 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+function checkKeyLength(alg: string, key: CryptoKey) {
+	if (alg.startsWith('RS') || alg.startsWith('PS')) {
+		const { modulusLength } = key.algorithm as RsaKeyAlgorithm;
+		if (typeof modulusLength !== 'number' || modulusLength < 2048) {
+			throw new TypeError(`${alg} requires key modulusLength to be 2048 bits or larger`);
+		}
+	}
+}
 
-const isProduction = process.env.NODE_ENV === 'production';
-
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
-
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+export { checkKeyLength };

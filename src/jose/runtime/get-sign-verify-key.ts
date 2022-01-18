@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,32 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { checkSigCryptoKey } from '../lib/crypto-key';
+import { invalidKeyInput } from '../lib/invalid-key-input';
+import { types } from './is-key-like';
+import { isCryptoKey } from './webcrypto';
 
-const isProduction = process.env.NODE_ENV === 'production';
+function getSignVerifyKey(alg: string, key: unknown, usage: KeyUsage) {
+	if (isCryptoKey(key)) {
+		checkSigCryptoKey(key, alg, usage);
+		return key;
+	}
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+	if (key instanceof Uint8Array) {
+		if (!alg.startsWith('HS')) {
+			throw new TypeError(invalidKeyInput(key, ...types));
+		}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+		return crypto.subtle.importKey(
+			'raw',
+			key,
+			{ hash: `SHA-${alg.slice(-3)}`, name: 'HMAC' },
+			false,
+			[usage],
+		);
+	}
+
+	throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
+}
+
+export { getSignVerifyKey };

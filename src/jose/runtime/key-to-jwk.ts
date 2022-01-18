@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 //
 // Copyright (c) 2022 Matthew Penner
 //
@@ -22,24 +20,31 @@
 // SOFTWARE.
 //
 
-import * as process from 'node:process';
-import { pnpPlugin } from '@yarnpkg/esbuild-plugin-pnp';
-import { build } from 'esbuild';
+import { encode as encodeBase64URL } from '../../base64url';
+import { invalidKeyInput } from '../lib/invalid-key-input';
+import type { JWK } from '../types';
+import { types } from './is-key-like';
+import { isCryptoKey } from './webcrypto';
 
-const isProduction = process.env.NODE_ENV === 'production';
+async function keyToJWK(key: unknown): Promise<JWK> {
+	if (key instanceof Uint8Array) {
+		return {
+			kty: 'oct',
+			k: encodeBase64URL(key),
+		};
+	}
 
-build({
-	sourcemap: isProduction ? false : 'both',
-	legalComments: 'none',
-	format: 'esm',
-	target: 'esnext',
-	minify: isProduction,
-	charset: 'utf8',
-	logLevel: isProduction ? 'info' : 'silent',
+	if (!isCryptoKey(key)) {
+		throw new TypeError(invalidKeyInput(key, ...types, 'Uint8Array'));
+	}
 
-	bundle: true,
-	outfile: 'dist/index.mjs',
-	entryPoints: ['src/index.ts'],
-	platform: 'browser',
-	plugins: [pnpPlugin()],
-}).catch(() => process.exit(1));
+	if (!key.extractable) {
+		throw new TypeError('non-extractable CryptoKey cannot be exported as a JWK');
+	}
+
+	const { ext, key_ops, alg, use, ...jwk } = await crypto.subtle.exportKey('jwk', key);
+
+	return jwk as JWK;
+}
+
+export { keyToJWK };

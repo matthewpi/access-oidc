@@ -20,8 +20,7 @@
 // SOFTWARE.
 //
 
-import type { JWTPayload, JWTVerifyResult } from 'jose';
-
+import type { JWTPayload, JWTVerifyResult } from './jose';
 import { API } from './cloudflare';
 import type { AuthorizationCode, Client, TokenAuthMethod } from './oidc-provider';
 import {
@@ -168,7 +167,9 @@ router.get('/protocol/openid-connect/auth', async (request, env: Env) => {
 	expiresAt.setMinutes(expiresAt.getMinutes() + 3);
 
 	const authorizationCode: Omit<AuthorizationCode, 'tokens'> = {
-		code: crypto.randomUUID(),
+		// @ts-expect-error DOM overrides the Worker crypto type.
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		code: crypto.randomUUID() as string,
 		clientId: query.clientId,
 		redirectUri: query.redirectUri,
 		scope: query.scopes.join(' '),
@@ -536,9 +537,13 @@ router.post(
 
 		const client: Client = {
 			...clientMetadata,
-			clientId: crypto.randomUUID(),
+			// @ts-expect-error DOM overrides the Worker crypto type.
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			clientId: crypto.randomUUID() as string,
 			clientIdIssuedAt: new Date(),
-			clientSecret: crypto.randomUUID(),
+			// @ts-expect-error DOM overrides the Worker crypto type.
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			clientSecret: crypto.randomUUID() as string,
 		};
 
 		await env.KV_OIDC.put('clients:' + client.clientId, JSON.stringify(client));
