@@ -14,36 +14,33 @@
 	"scripts": {
 		"postinstall": "husky install",
 		"clean": "rm -f dist/*",
-		"build": "cross-env NODE_ENV=\"development\" $npm_node_execpath build.mjs",
-		"build:production": "cross-env NODE_ENV=\"production\" $npm_node_execpath build.mjs",
+		"build": "cross-env NODE_ENV=development $npm_node_execpath build.mjs",
+		"build:production": "cross-env NODE_ENV=production $npm_node_execpath build.mjs",
 		"dev": "miniflare --debug --watch --build-command \"$npm_execpath run build\" --kv KV_OIDC"
 	},
 	"dependencies": {
 		"~": "link:./src"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "3.3.0",
-		"@yarnpkg/esbuild-plugin-pnp": "2.0.0",
-		"cron-schedule": "3.0.4",
+		"@cloudflare/workers-types": "3.4.0",
+		"@yarnpkg/esbuild-plugin-pnp": "2.0.1",
+		"cron-schedule": "3.0.5",
 		"cross-env": "7.0.3",
-		"esbuild": "0.14.11",
-		"eslint": "8.7.0",
+		"esbuild": "0.14.30",
+		"eslint": "8.12.0",
 		"husky": "7.0.4",
-		"lint-staged": "12.1.7",
-		"miniflare": "2.1.0",
-		"prettier": "2.5.1",
-		"typescript": "4.5.4",
-		"xo": "0.47.0"
+		"lint-staged": "12.3.7",
+		"miniflare": "2.4.0",
+		"prettier": "2.6.2",
+		"typescript": "4.6.3",
+		"xo": "0.48.0"
 	},
 	"lint-staged": {
 		"src/**/*.{d.ts,ts}": [
 			"yarn xo",
 			"yarn prettier --write"
 		],
-		"**/*.json": [
-			"yarn prettier --write"
-		],
-		"**/*.md": [
+		"**/*.{json,md}": [
 			"yarn prettier --write"
 		]
 	},
