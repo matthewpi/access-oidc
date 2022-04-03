@@ -3,9 +3,14 @@
 	"description": "OpenID Connect server running on Cloudflare Workers and authenticated by Cloudflare Access",
 	"version": "0.0.1",
 	"license": "MIT",
+	"private": true,
 	"main": "dist/index.mjs",
 	"type": "module",
-	"private": true,
+	"packageManager": "yarn@3.2.0",
+	"engines": {
+		"node": ">=16.7",
+		"yarn": ">=1.22.0"
+	},
 	"scripts": {
 		"postinstall": "husky install",
 		"clean": "rm -f dist/*",
@@ -42,15 +47,10 @@
 			"yarn prettier --write"
 		]
 	},
-	"engines": {
-		"node": ">=16.7",
-		"yarn": ">=1.22.0"
-	},
 	"volta": {
-		"node": "16.13.1",
-		"yarn": "1.22.17"
+		"node": "16.14.2",
+		"yarn": "1.22.18"
 	},
-	"packageManager": "yarn@3.1.1",
 	"xo": {
 		"environments": [
 			"esnext"
