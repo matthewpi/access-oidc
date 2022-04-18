@@ -18,7 +18,7 @@ SECRET_CF_ACCESS_TEAM = "<https://developers.cloudflare.com/cloudflare-one/gloss
 SECRET_CF_ACCESS_AUD = "<create an Access Application and copy it's AUD (Overview tab once the app has been saved)>"
 
 [build]
-command = "yarn install && yarn run build:production"
+command = "yarn install --immutable && yarn run build:production"
 
 [build.upload]
 dir = "dist"
